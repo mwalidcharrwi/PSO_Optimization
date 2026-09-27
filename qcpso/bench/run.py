@@ -44,6 +44,8 @@ ABLATIONS = {
     "hypso_noseed": dict(pso=dict(elitist_seed=False)),
     "hypso_relaxed": dict(pso=dict(categorical="relaxed")),
     "hypso_unguided": dict(pso=dict(guided=False)),
+    "hypso_eager": dict(pso=dict(lazy=False)),
+    "hypso_ls4": dict(pso=dict(memetic_evals=4)),
 }
 DEFAULT_METHODS = "greedy,hypso,spso,ga,sa,rs,qiskit,tket,pyzx"
 
@@ -242,7 +244,8 @@ def summarise(rows: list[dict], original: dict, objective: str, reference: str =
         lines.append("")
     n_bad = sum(1 for r in rows if r["verified"] is False)
     lines.append(f"Equivalence check: {sum(1 for r in rows if r['verified'] is True)} verified, "
-                 f"{sum(1 for r in rows if r['verified'] is None)} too large to simulate, {n_bad} FAILED.")
+                 f"{sum(1 for r in rows if r['verified'] is None)} not checked (too large, or --no-verify), "
+                 f"{n_bad} FAILED.")
     return "\n".join(lines) + "\n"
 
 

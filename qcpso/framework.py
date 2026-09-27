@@ -103,6 +103,9 @@ class CircuitProblem:
                 self.place_index[t] = self.place_start + (i if i < n_place else _stable_hash(t) % max(1, n_place))
             card.extend([0] * n_place)
         self.n_place = len(card) - self.place_start
+        # placement genes refine a good solution rather than define it: they are
+        # "lazy" (see PSOParams.lazy) so they do not dilute the global search
+        self.lazy_genes = np.arange(self.place_start, self.place_start + self.n_place)
         # ---- schedule genes ----
         self.sched_start = len(card)
         self.n_sched = cfg.n_schedule_slots if cfg.use_schedule else 0

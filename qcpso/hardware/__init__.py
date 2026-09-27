@@ -23,7 +23,7 @@ class HardwareSpec:
     decay, tie-break seed] (categorical).
     """
 
-    def __init__(self, cmap: CouplingMap, continuous: bool = True, layout_trials: int = 4, seed: int = 0):
+    def __init__(self, cmap: CouplingMap, continuous: bool = True, layout_trials: int = 20, seed: int = 0):
         self.cmap = cmap
         self.continuous = continuous
         self.layout_trials = layout_trials

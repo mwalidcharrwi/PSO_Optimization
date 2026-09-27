@@ -67,6 +67,8 @@ class PSOParams:
     memetic: bool = True
     memetic_evals: int = 8
     guided: bool = True            # provenance-guided local search (if the problem supports it)
+    lazy: bool = True              # "lazy" genes (problem.lazy_genes) start at their default and
+                                   # are changed only by local search, then spread socially
     opposition_init: bool = True
     elitist_seed: bool = True
     seed: int = 0
@@ -98,6 +100,9 @@ class SwarmOptimizer:
                 self.groups[k] = np.flatnonzero(self.card == k)
         # genes moved by the continuous rule
         self.move_idx = self.cont_idx if self.prob_mode else np.arange(self.dim)
+        lazy = np.asarray(getattr(problem, "lazy_genes", []), dtype=int) if self.p.lazy else np.zeros(0, int)
+        self.lazy_idx = lazy
+        self.turb_idx = np.setdiff1d(self.move_idx, lazy)
 
     # ------------------------------------------------------------------ #
     def _budget_left(self, t0) -> bool:
@@ -163,6 +168,9 @@ class SwarmOptimizer:
             for j in range(half):
                 X[ns + half + j] = 1.0 - X[ns + j]
         V = rng.uniform(-p.vmax, p.vmax, (S, D)) * 0.5
+        if len(self.lazy_idx):  # two-timescale genome: lazy genes start at their defaults
+            X[:, self.lazy_idx] = self.problem.seed_positions()[0][self.lazy_idx]
+            V[:, self.lazy_idx] = 0.0
         prob, pvel = {}, {}
         for k, idx in self.groups.items():
             prob[k] = self._soft_onehot(self._cats(X, idx, k), k)
@@ -203,8 +211,9 @@ class SwarmOptimizer:
                 if not self.prob_mode and p.gene_copy > 0 and len(self.cat_idx):
                     idx = self.cat_idx[rng.random(len(self.cat_idx)) < p.gene_copy]
                     X[i, idx] = L[i, idx]
-                if mut > 0 and len(mi):
-                    m = mi[rng.random(len(mi)) < mut]
+                ti = self.turb_idx
+                if mut > 0 and len(ti):
+                    m = ti[rng.random(len(ti)) < mut]
                     X[i, m] = rng.random(len(m))
             # ---- categorical genes: probability-vector PSO ----
             eps = min(0.5, p.cat_floor + mut)
@@ -250,7 +259,12 @@ class SwarmOptimizer:
             else:
                 stall += 1
                 if stall >= p.patience:
-                    for j in self._restart(X, V, PF, G):
+                    restarted = self._restart(X, V, PF, G)
+                    if len(self.lazy_idx):
+                        for j in restarted:
+                            X[j, self.lazy_idx] = G[self.lazy_idx]
+                            V[j, self.lazy_idx] = 0.0
+                    for j in restarted:
                         for k, idx in self.groups.items():
                             prob[k][j] = self._soft_onehot(self._cats(X[j:j + 1], idx, k), k)[0]
                             pvel[k][j] = 0.0
@@ -283,50 +297,71 @@ class SwarmOptimizer:
         else:
             y[g] = self.rng.random()
 
+    # move types of the memetic local search
+    _MOVES = ("perm", "lazy", "site1", "siteall", "pair", "generic")
+
+    def _move_probs(self, avail):
+        """Adaptive operator selection (probability matching, Thierens 2005):
+        each move type is chosen in proportion to its decayed reward, with a
+        floor so that no operator is ever switched off completely."""
+        q = np.array([self._aos.get(m, 1.0) for m in avail])
+        pmin = 0.05
+        pr = pmin + (1 - pmin * len(avail)) * q / q.sum()
+        return pr / pr.sum()
+
     def local_search(self, x: np.ndarray, f, t0):
-        """(Provenance-guided) variable-neighbourhood moves around the global best."""
+        """(Provenance-guided) variable-neighbourhood moves around the global best,
+        with adaptive selection of the move type."""
         rng = self.rng
+        if not hasattr(self, "_aos"):
+            self._aos = {}
         info = None
         if self.p.guided and hasattr(self.problem, "site_info"):
             info = self.problem.site_info(x)
         perm_groups = getattr(self.problem, "perm_groups", None) or []
         perm_move = getattr(self.problem, "perm_move", None) if perm_groups else None
-        batch = []
+        has_sites = info is not None and bool(info[0])
+        avail = [m for m in self._MOVES
+                 if (m != "perm" or perm_move is not None)
+                 and (m != "lazy" or len(self.lazy_idx))
+                 and (m not in ("site1", "siteall", "pair") or has_sites)]
+        probs = self._move_probs(avail)
+        batch, kinds = [], []
         for _ in range(self.p.memetic_evals):
             y = x.copy()
-            if perm_move is not None and rng.random() < 0.35:  # layout move (hardware mode)
+            kind = avail[int(rng.choice(len(avail), p=probs))]
+            if kind == "perm":
                 perm_move(y, rng)
-                batch.append(y)
-                continue
-            r = rng.random()
-            if info is not None and info[0] and r < 0.85:
+            elif kind == "lazy":  # relocate / restore one lazy gene
+                gi = int(rng.choice(self.lazy_idx))
+                y[gi] = 0.5 + 0.5 * rng.random() if y[gi] < 0.5 else 0.25
+            elif kind in ("site1", "siteall", "pair"):
                 sites, w, nbrs = info
                 s = int(rng.choice(len(sites), p=w))
-                r2 = rng.random()
-                if r2 < 0.5:
+                if kind == "site1":
                     self._mutate(y, int(rng.choice(sites[s])))
-                elif r2 < 0.75:
+                elif kind == "siteall":
                     for gi in sites[s]:
                         if rng.random() < 0.7:
                             self._mutate(y, gi)
-                elif nbrs[s]:
-                    s2 = int(rng.choice(nbrs[s]))
+                else:
+                    s2 = int(rng.choice(nbrs[s])) if nbrs[s] else s
                     self._mutate(y, int(rng.choice(sites[s])))
                     self._mutate(y, int(rng.choice(sites[s2])))
-                else:
-                    self._mutate(y, int(rng.choice(sites[s])))
-            elif perm_groups and r < 0.95:
-                grp = perm_groups[int(rng.integers(len(perm_groups)))]
-                a, b = rng.choice(grp, 2, replace=False)
-                y[a], y[b] = y[b], y[a]
             else:
                 n_moves = 1 if rng.random() < 0.7 else 2
                 for gi in rng.choice(self.dim, size=min(n_moves, self.dim), replace=False):
                     self._mutate(y, int(gi))
             batch.append(y)
+            kinds.append(kind)
         if not batch or not self._budget_left(t0):
             return x, f
         fs = self.problem.evaluate_batch(np.array(batch))
+        # credit assignment: strict improvements earn 1, neutral (plateau) moves 0.1
+        for m in avail:
+            self._aos[m] = 0.9 * self._aos.get(m, 1.0)
+        for kind, fy in zip(kinds, fs):
+            self._aos[kind] += 1.0 if fy < f else (0.1 if fy == f else 0.0)
         j = min(range(len(fs)), key=lambda i: fs[i])
         if fs[j] <= f:
             return batch[j], fs[j]
