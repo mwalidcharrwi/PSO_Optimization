@@ -51,8 +51,8 @@ DEFAULT_METHODS = "greedy,hypso,spso,ga,sa,rs,qiskit,tket,pyzx"
 
 
 def load_suite(spec: str, scale: str = "small") -> list[Circuit]:
-    if spec in ("builtin", "tiny", "small", "large"):
-        return builtin_suite("tiny" if spec == "tiny" else ("large" if spec == "large" else scale))
+    if spec in ("builtin", "small", "tiny", "large", "continuous", "hardware", "ablation"):
+        return builtin_suite(scale if spec == "builtin" else spec)
     paths = []
     if os.path.isdir(spec):
         for ext in ("*.qasm", "*.qc", "*.real"):

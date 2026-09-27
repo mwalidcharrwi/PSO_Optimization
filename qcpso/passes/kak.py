@@ -24,20 +24,42 @@ _YY = np.kron(_Y, _Y)
 _CX = np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0]], dtype=complex)
 
 
-def min_cnots(u: np.ndarray, tol: float = 1e-7) -> int:
+def min_cnots(u: np.ndarray, tol: float = 1e-9) -> int:
+    """Optimal CNOT count (exact classification; block unitaries built from
+    exact gate products are accurate to ~1e-13, so tight tolerances are used
+    to avoid calling a nearly-local gate such as cp(pi/2^20) local)."""
     u = np.asarray(u, dtype=complex)
     u = u / np.linalg.det(u) ** 0.25
     g = u @ _YY @ u.T @ _YY
     if np.allclose(g, np.eye(4), atol=tol) or np.allclose(g, -np.eye(4), atol=tol):
         return 0
     ev = np.linalg.eigvals(g)
-    n_pi = int(np.sum(np.abs(ev - 1j) < 1e-5))
-    n_mi = int(np.sum(np.abs(ev + 1j) < 1e-5))
+    n_pi = int(np.sum(np.abs(ev - 1j) < 1e-7))
+    n_mi = int(np.sum(np.abs(ev + 1j) < 1e-7))
     if n_pi == 2 and n_mi == 2:
         return 1
     if abs(np.trace(g).imag) < tol:
         return 2
     return 3
+
+
+def is_local(u: np.ndarray, tol: float = 1e-10) -> bool:
+    """Exact product test via the operator-Schmidt decomposition.  Unlike the
+    invariants used by :func:`min_cnots` (quadratic in the interaction
+    strength), the second Schmidt coefficient is linear in it."""
+    r = np.asarray(u).reshape(2, 2, 2, 2).transpose(0, 2, 1, 3).reshape(4, 4)
+    sv = np.linalg.svd(r, compute_uv=False)
+    return sv[1] < tol * max(1.0, sv[0])
+
+
+def robust_min_cnots(u: np.ndarray) -> int:
+    """:func:`min_cnots` corrected for nearly-local unitaries: a non-local
+    gate within the 0-CNOT tolerance is close to the identity class and hence
+    cannot be CNOT-equivalent, so at least two CNOTs are required."""
+    k = min_cnots(u)
+    if k == 0 and not is_local(u):
+        return 2
+    return k
 
 
 # --------------------------------------------------------------------------- #
@@ -72,6 +94,20 @@ def _infidelity(v: np.ndarray, u: np.ndarray) -> np.ndarray:
     return 1.0 - np.abs(tr) / 4.0
 
 
+def _layers(x, k):
+    """U3 matrices and their angle derivatives for a single parameter vector."""
+    xs = x.reshape(k + 1, 2, 3)
+    t, p, l = xs[..., 0], xs[..., 1], xs[..., 2]
+    c, s = np.cos(t / 2), np.sin(t / 2)
+    el, ep, epl = np.exp(1j * l), np.exp(1j * p), np.exp(1j * (p + l))
+    z = np.zeros_like(c, dtype=complex)
+    U = np.stack([np.stack([c + 0j, -el * s], -1), np.stack([ep * s, epl * c], -1)], -2)
+    dt = np.stack([np.stack([-s / 2 + 0j, -el * c / 2], -1), np.stack([ep * c / 2, -epl * s / 2], -1)], -2)
+    dp = np.stack([np.stack([z, z], -1), np.stack([1j * ep * s, 1j * epl * c], -1)], -2)
+    dl = np.stack([np.stack([z, -1j * el * s], -1), np.stack([z, 1j * epl * c], -1)], -2)
+    return U, (dt, dp, dl)
+
+
 def _residual(xphi, u, k):
     x, phi = xphi[:-1], xphi[-1]
     v = template_unitary(x[None, :], k)[0]
@@ -79,8 +115,32 @@ def _residual(xphi, u, k):
     return np.concatenate([d.real.ravel(), d.imag.ravel()])
 
 
+def _jacobian(xphi, u, k):
+    """Exact Jacobian of the residual (prefix/suffix products)."""
+    x, phi = xphi[:-1], xphi[-1]
+    U, D = _layers(x, k)
+    L = [np.kron(U[j, 0], U[j, 1]) for j in range(k + 1)]
+    B = [np.eye(4, dtype=complex)]
+    for j in range(1, k + 1):
+        B.append(_CX @ L[j - 1] @ B[j - 1])
+    A = [None] * (k + 1)
+    A[k] = np.eye(4, dtype=complex)
+    for j in range(k - 1, -1, -1):
+        A[j] = A[j + 1] @ L[j + 1] @ _CX
+    cols = []
+    for j in range(k + 1):
+        for w in range(2):
+            for d in range(3):
+                dl = np.kron(D[d][j, 0], U[j, 1]) if w == 0 else np.kron(U[j, 0], D[d][j, 1])
+                dv = A[j] @ dl @ B[j]
+                cols.append(np.concatenate([dv.real.ravel(), dv.imag.ravel()]))
+    dphi = -1j * np.exp(1j * phi) * u
+    cols.append(np.concatenate([dphi.real.ravel(), dphi.imag.ravel()]))
+    return np.array(cols).T
+
+
 def instantiate(u: np.ndarray, k: int, rng: np.random.Generator | None = None, swarm: int = 24,
-                iters: int = 30, restarts: int = 6, tol: float = 1e-10):
+                iters: int = 30, restarts: int = 3, tol: float = 1e-9):
     """Find x with template_unitary(x, k) == e^{i phi} u.  Returns x or None."""
     rng = rng or np.random.default_rng(7)
     dim = 6 * (k + 1)
@@ -100,12 +160,12 @@ def instantiate(u: np.ndarray, k: int, rng: np.random.Generator | None = None, s
     order = np.argsort(pfit)
     starts = [pbest[i] for i in order[:restarts]]
     starts += [rng.uniform(0, 2 * math.pi, size=dim) for _ in range(restarts)]
-    # --- Levenberg-Marquardt polishing (local) ----------------------------
+    # --- Levenberg-Marquardt polishing (local, exact Jacobian) ------------
     for x0 in starts:
         v0 = template_unitary(x0[None, :], k)[0]
         phi0 = np.angle(np.vdot(u, v0))
-        res = least_squares(_residual, np.append(x0, phi0), args=(u, k), method="lm",
-                            xtol=1e-15, ftol=1e-15, gtol=1e-15, max_nfev=4000)
+        res = least_squares(_residual, np.append(x0, phi0), jac=_jacobian, args=(u, k), method="lm",
+                            xtol=1e-15, ftol=1e-15, gtol=1e-15, max_nfev=400)
         if np.linalg.norm(res.fun) < tol:
             return res.x[:-1]
     return None
@@ -127,7 +187,7 @@ def synthesize_2q(u: np.ndarray, a: int, b: int, k: int | None = None) -> list[G
     key = _cache_key(u)
     tpl = _CACHE.get(key)
     if tpl is None:
-        kk = min_cnots(u) if k is None else k
+        kk = robust_min_cnots(u) if k is None else k
         x = None
         while x is None and kk <= 3:
             x = instantiate(u, kk)
@@ -213,10 +273,12 @@ def resynthesize_blocks(circ: Circuit, min_gain: int = 1) -> tuple[Circuit, bool
         if ncx < 2:
             continue
         u = block_unitary(circ, pair, idx)
-        k = min_cnots(u)
+        k = robust_min_cnots(u)
         if ncx - k < min_gain:
             continue
         new = synthesize_2q(u, pair[0], pair[1])
+        if sum(1 for g in new if g.name == "cx") >= ncx:
+            continue  # numerical synthesis did not reach the predicted count
         tag = circ.gates[idx[0]].tag
         new = [Gate(g.name, g.qubits, g.params, tag) for g in new]
         remove.update(idx)

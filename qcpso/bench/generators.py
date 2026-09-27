@@ -165,6 +165,14 @@ def builtin_suite(scale: str = "small") -> list[Circuit]:
     """A default benchmark suite (used until external benchmarks are given)."""
     if scale == "tiny":
         return [tof_n(3), barenco_tof_n(3), cuccaro_adder(2), gf2_mult(2), qft(3)]
+    if scale == "continuous":
+        return [tof_n(4), tof_n(5), barenco_tof_n(4), barenco_tof_n(5), vbe_adder(3), cuccaro_adder(4),
+                gf2_mult(4), qft(5), qft(8), qaoa_maxcut(8, 1), random_clifford_t(6, 150, seed=1)]
+    if scale == "hardware":
+        return [tof_n(4), barenco_tof_n(4), vbe_adder(3), cuccaro_adder(4), gf2_mult(3), qft(6), qft(8),
+                qaoa_maxcut(10, 1)]
+    if scale == "ablation":
+        return [tof_n(10), barenco_tof_n(5), barenco_tof_n(10), vbe_adder(3), cuccaro_adder(8), gf2_mult(5)]
     suite = [
         tof_n(3), tof_n(4), tof_n(5), tof_n(10),
         barenco_tof_n(3), barenco_tof_n(4), barenco_tof_n(5), barenco_tof_n(10),
