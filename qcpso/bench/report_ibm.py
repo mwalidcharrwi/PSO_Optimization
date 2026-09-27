@@ -61,7 +61,7 @@ def main(argv=None):
                 s = f"{vals[m]:.1f}" if vals[m] != int(vals[m]) else f"{int(vals[m])}"
                 cells.append(f"**{s}**" if abs(vals[m] - best) < 1e-9 else s)
             o = orig[c][metric]
-            red = f"{100 * (1 - vals['hypso'] / o):+.1f} %" if "hypso" in vals and o else "–"
+            red = f"{100 * (1 - vals['hypso'] / o):+.2f} %" if "hypso" in vals and o else "–"
             red = red.replace("+", "−", 1) if red.startswith("+") else red.replace("-", "+", 1)
             out.append(f"| {c} | {orig[c]['n_qubits']} | {int(o)} | " + " | ".join(cells) + f" | {red} |")
         out.append("")

@@ -68,6 +68,31 @@ Enabling free rotation placement costs 1.6 % (p = 0.016), so it is opt-in.
 Seeding, memetic search, pass-schedule genes, guidance and topology are
 neutral at this budget (< 1 %, not significant).
 
+## Results on the supplied benchmarks (`test_circuits_new`)
+
+The ten supplied circuits are already transpiled for a 127-qubit IBM device
+({rz, sx, x, ecr}).  They were re-optimised in `ibm` mode, keeping the
+mapping and native ECR directions; the full protocol is in
+[results/ibm_testset/REPORT.md](results/ibm_testset/REPORT.md).
+
+| circuit | ECR: input → HyPSO-QCO (Qiskit O3) | total gates: input → HyPSO-QCO (Qiskit O3) |
+|---|---|---|
+| mult_8 | 311 → **309** (311) | 1,898 → **1,428** (1,958) |
+| heisenberg_8 | 420 → **420** (420) | 2,127 → **1,325** (2,127) |
+| add_17 | 499 → **494** (499) | 2,812 → **2,196** (2,916) |
+| qae_17 | 541 → **530** (541) | 3,033 → **2,399** (3,085) |
+| qft_16 | 614 → **607** (614) | 3,444 → **2,668** (3,505) |
+| hubbard_8 | 1,344 → **1,335** (1,344) | 8,125 → **5,956** (8,070) |
+| hhl_8 | 2,377 → **2,376** (2,377) | 18,165 → **15,402** (19,083) |
+| heisenberg_32† | 3,942 → **3,882** (4,024) | 58,848 → **14,740** (22,592) |
+| grover_10 | 16,397 → **16,395** (16,397) | 93,235 → **71,485** (93,315) |
+| hubbard_18† | 33,958 → **30,415** (33,456) | 357,535 → **135,134** (153,652) |
+
+HyPSO-QCO values are means over seeds.  All outputs with ≤ 20 active qubits
+are verified equivalent by simulation.  † 31–32 active qubits: too large to
+verify here.  The optimised QASM files are in
+[results/ibm_testset/optimized/](results/ibm_testset/optimized/).
+
 ## Installation
 
 ```bash
