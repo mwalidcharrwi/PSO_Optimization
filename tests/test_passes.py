@@ -116,3 +116,11 @@ def test_block_resynthesis_and_fusion():
     f, _ = fuse_1q(r)
     assert equivalent(c, f)
     assert all(len(blk[0]) == 2 for blk in collect_2q_blocks(b))
+
+
+def test_min_cnots_swap_class_regression():
+    # (I x W) SWAP: sporadically broke an eigen-solver based classification
+    u = np.array([[1j, 0, 1, 0], [-1, 0, -1j, 0], [0, 1j, 0, 1], [0, -1, 0, -1j]]) / np.sqrt(2)
+    assert min_cnots(u) == 3
+    cx = np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0]], dtype=complex)
+    assert min_cnots(cx) == 1 and min_cnots(np.eye(4)) == 0

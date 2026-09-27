@@ -56,7 +56,10 @@ class HyPSOConfig:
     objective: str | None = None       # key of pipeline.OBJECTIVES (default by mode)
     n_schedule_slots: int = 6
     use_variants: bool = True
-    use_placement: bool = True
+    # Free rotation placement is sound and available, but the ablation study
+    # (results/ablation) shows it does not pay off at practical budgets, so it
+    # is opt-in.
+    use_placement: bool = False
     use_schedule: bool = True
     max_placement_genes: int = 512
     workers: int = 1

@@ -33,12 +33,14 @@ def min_cnots(u: np.ndarray, tol: float = 1e-9) -> int:
     g = u @ _YY @ u.T @ _YY
     if np.allclose(g, np.eye(4), atol=tol) or np.allclose(g, -np.eye(4), atol=tol):
         return 0
-    ev = np.linalg.eigvals(g)
-    n_pi = int(np.sum(np.abs(ev - 1j) < 1e-7))
-    n_mi = int(np.sum(np.abs(ev + 1j) < 1e-7))
-    if n_pi == 2 and n_mi == 2:
+    # 1 CNOT iff char. poly = (x^2 + 1)^2.  g is unitary, so its eigenvalues lie
+    # on the unit circle and this is equivalent to tr g = 0 and tr g^2 = -4.
+    # (Using traces instead of an eigen-solver also avoids sporadic LAPACK
+    # non-convergence on highly degenerate spectra, e.g. SWAP-class blocks.)
+    tr1 = np.trace(g)
+    if abs(tr1) < 1e-7 and abs(np.trace(g @ g) + 4.0) < 1e-7:
         return 1
-    if abs(np.trace(g).imag) < tol:
+    if abs(tr1.imag) < tol:
         return 2
     return 3
 

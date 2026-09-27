@@ -12,7 +12,7 @@ item states the hypothesis and how to evaluate it with `qcpso.bench.run`.
 |---|---|---|---|
 | A1 | **Equivalence-by-construction search space**: particles encode decisions of a sound optimisation program, not circuits | Removes fidelity penalties and makes PSO scale from ~5 to thousands of qubits×gates | every result is verified; runs on circuits with >1000 gates |
 | A2 | **BFS-enumerated decomposition-variant library** (108 + 12 CCZ networks × polarity × T placement; 2-qubit gate orientations) | Joint choice of decompositions creates cancellations that greedy polarity choice misses | `hypso_novar` |
-| A3 | **Free rotation placement** in path-sum phase folding | Moving merged phases out of CNOT sandwiches unlocks CNOT cancellations | `hypso_noplace` |
+| A3 | **Free rotation placement** in path-sum phase folding (opt-in) | Moving merged phases out of CNOT sandwiches unlocks CNOT cancellations | `hypso_place`; **not beneficial at the tested budgets** (see results/ablation), kept opt-in; targeted placement is an open question |
 | A4 | **Pass-schedule genes** (phase-ordering) | Different pass orders reach different local optima | `hypso_nosched` |
 | A5 | **Provenance-aligned genome** (semantic parity tags) | Keeps gene meaning stable across particles, so social learning transfers decisions correctly | compare with positional encoding (open A5b) |
 | A6 | **Categorical PSO** for nominal decisions + hybrid SPSO/QPSO for continuous genes | Probability-vector dynamics fit nominal variables better than continuous relaxation | `hypso_relaxed`, `hypso_spso`, `hypso_qpso` |
@@ -20,7 +20,7 @@ item states the hypothesis and how to evaluate it with `qcpso.bench.run`.
 | A8 | **Elitist seeding with the deterministic compiler** | Guarantees the result is never worse than greedy, so the swarm is a safe drop-in | `hypso_noseed` |
 | A9 | **Hardware co-optimisation** (random-key layout + router hyper-parameters + nearest-neighbour Toffoli networks in one swarm) | Decomposition and layout interact; optimising them jointly lowers SWAP overhead | `--mode hardware` vs Qiskit/TKET and greedy SABRE |
 | A10 | **Swarm instantiation** for 2-qubit block resynthesis (inner PSO + Levenberg–Marquardt with exact Jacobian) | A global swarm stage avoids local minima of pure gradient instantiation | `passes/kak.py` |
-| A11 | **Two-timescale genome** (lazy placement genes refined only by local search) | Fine-grained genes should refine, not define, solutions | `hypso_eager` |
+| A11 | **Two-timescale genome** (lazy placement genes refined only by local search) | Fine-grained genes should refine, not define, solutions | `hypso_place` vs `hypso_place_eager` |
 | A12 | **Adaptive operator selection** in the memetic search (probability matching) | Which neighbourhood pays off is circuit-family dependent | compare fixed move mix (git history) |
 
 ## B. Open directions (the next papers)

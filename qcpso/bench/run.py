@@ -35,7 +35,8 @@ from .generators import builtin_suite
 SEARCH_METHODS = {"hypso", "spso", "spso_seeded", "ga", "sa", "rs"}
 ABLATIONS = {
     "hypso_novar": dict(use_variants=False),
-    "hypso_noplace": dict(use_placement=False),
+    "hypso_place": dict(use_placement=True),                        # opt-in: lazy placement genes
+    "hypso_place_eager": dict(use_placement=True, pso=dict(lazy=False)),
     "hypso_nosched": dict(use_schedule=False),
     "hypso_nomemetic": dict(pso=dict(memetic=False)),
     "hypso_spso": dict(pso=dict(variant="spso")),
@@ -44,7 +45,6 @@ ABLATIONS = {
     "hypso_noseed": dict(pso=dict(elitist_seed=False)),
     "hypso_relaxed": dict(pso=dict(categorical="relaxed")),
     "hypso_unguided": dict(pso=dict(guided=False)),
-    "hypso_eager": dict(pso=dict(lazy=False)),
     "hypso_ls4": dict(pso=dict(memetic_evals=4)),
 }
 DEFAULT_METHODS = "greedy,hypso,spso,ga,sa,rs,qiskit,tket,pyzx"

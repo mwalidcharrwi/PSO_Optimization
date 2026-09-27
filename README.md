@@ -10,8 +10,8 @@ a semantics-preserving optimisation program*:
 
 * which decomposition variant each Toffoli/CCZ/CZ/SWAP/CP/… uses, including
   108 BFS-enumerated minimal CCZ networks, T polarity and T placement;
-* where each folded phase rotation is placed (free placement in path-sum
-  phase folding);
+* optionally, where each folded phase rotation is placed (free placement in
+  path-sum phase folding; opt-in, see the ablation);
 * the order of optimisation passes; and
 * in hardware mode, the qubit layout and router hyper-parameters, chosen
   jointly with nearest-neighbour Toffoli networks.
@@ -92,7 +92,7 @@ mid-circuit measurement or classical control are rejected with an error.
 | `qiskit` | Qiskit `optimization_level=3` (strict equivalence: permutation elision disabled) |
 | `tket` | TKET `FullPeepholeOptimise` (+ `DefaultMappingPass` in hardware mode) |
 | `pyzx` | PyZX `full_reduce` + extraction + basic optimisation |
-| `hypso_*` | ablations (no variants / placement / schedule / memetic / guidance, relaxed categorical, SPSO-only, QPSO-only, static gbest, unseeded) |
+| `hypso_*` | ablations (no variants / schedule / memetic / guidance, with placement (lazy or eager), relaxed categorical, SPSO-only, QPSO-only, static gbest, unseeded) |
 
 The benchmark runner writes `results.csv`, `summary.md` (per-circuit tables,
 average reductions, wins/ties/losses, one-sided Wilcoxon signed-rank tests,

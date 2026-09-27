@@ -41,7 +41,7 @@ circuit size, the swarm scales to circuits with thousands of gates.
 | segment | per | cardinality | decoding |
 |---|---|---|---|
 | **variant** | multi-variant gate instance ("site") | categorical | factor tuple of the site (see 3.1) |
-| **placement** | rotation, keyed by semantic tag | continuous | `<0.5` keep the standard location, else relative position among all availability points (3.2) |
+| **placement** (opt-in, `use_placement=True`) | rotation, keyed by semantic tag | continuous, *lazy* | `<0.5` keep the standard location, else relative position among all availability points (4) |
 | **schedule** | slot (default 6) | categorical over {skip, cancel, fold, hred, fold+cancel, kak} | pass sequence, followed by the clean-up fix point |
 | **hardware** | physical qubit + 4 router genes | continuous keys + categorical | random-key layout; SABRE look-ahead size, weight, decay, tie-break seed |
 
@@ -99,6 +99,11 @@ some wire carries ℓ (with sign (−1)^{c}).  HyPSO-QCO enumerates these
 every interval during which a wire holds ℓ) and lets the placement gene
 choose; a rotation stuck between two otherwise-cancelling CNOTs can thus be
 moved away.  Rotations on constant wires are global phases and removed.
+
+*Ablation finding:* free placement is sound and occasionally helps (e.g.
+GF(2^n) multipliers at 2000 evaluations), but across the ablation suite it
+did not pay off at the tested budgets, even with lazy genes.  It is
+therefore **opt-in**; by default the first-occurrence placement is used.
 
 The clean-up fix point iterates `cancel → fold → cancel → hred → fold →
 cancel` until the size stops decreasing.  All passes preserve the coupling
