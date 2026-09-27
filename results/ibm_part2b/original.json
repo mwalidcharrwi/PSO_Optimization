@@ -1,0 +1,1 @@
+{"qae_17": {"gates": 3033, "cx": 0, "twoq": 541, "oneq": 2492, "t": 38, "h": 0, "depth": 1066, "twoq_depth": 274, "n_qubits": 17}, "qft_16": {"gates": 3444, "cx": 0, "twoq": 614, "oneq": 2830, "t": 44, "h": 0, "depth": 1009, "twoq_depth": 260, "n_qubits": 16}}
