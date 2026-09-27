@@ -1,7 +1,7 @@
 __pycache__/
 *.pyc
 .pytest_cache/
-results/*/convergence.json
 *.egg-info/
 logs/
-results/*/circuits/
+results/**/convergence.json
+results/**/circuits/
