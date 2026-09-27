@@ -98,7 +98,9 @@ print(res.summary())      # lowered -> greedy -> HyPSO metrics, equivalence chec
 
 Modes: `cliffordt` ({H, X, Rz, CNOT}; T-count reported), `continuous`
 ({U3, CNOT}), `hardware` (coupling maps `ibm_tokyo`, `ibm_qx5`,
-`ibm_falcon27`, `line_N`, `ring_N`, `grid_RxC`, `full_N`).  Objectives:
+`ibm_falcon27`, `line_N`, `ring_N`, `grid_RxC`, `full_N`), and `ibm`, which
+re-optimises circuits already transpiled to IBM's native {rz, sx, x, ecr}
+while keeping their qubit mapping and ECR directions.  Objectives:
 `gates`, `cx`, `t`, `depth`, `fidelity`.
 
 ## Evaluating on your own benchmark circuits

@@ -32,20 +32,25 @@ def _build(circ: Circuit, idx: dict, n: int):
     return qc
 
 
-def qcec_equivalent(a: Circuit, b: Circuit, timeout: float = 600.0) -> bool | None:
-    """True/False from QCEC, or None if QCEC is unavailable or inconclusive."""
+def qcec_equivalent(a: Circuit, b: Circuit, timeout: float = 600.0, max_sims: int = 16) -> str:
+    """QCEC verdict: "equivalent", "probably_equivalent" (random-stimuli
+    simulation only), "not_equivalent" or "unknown".  The ZX checker is
+    disabled because floating-point rotation angles make it unreliable."""
     try:
         from mqt import qcec
     except ImportError:
-        return None
+        return "unknown"
     qubits = sorted(a.used_qubits() | b.used_qubits())
     idx = {q: i for i, q in enumerate(qubits)}
     qa, qb = _build(a, idx, len(qubits)), _build(b, idx, len(qubits))
-    res = qcec.verify(qa, qb, timeout=timeout, check_partial_equivalence=False,
-                      transform_dynamic_circuit=False)
+    res = qcec.verify(qa, qb, timeout=timeout, run_zx_checker=False, run_alternating_checker=True,
+                      run_simulation_checker=True, run_construction_checker=False, max_sims=max_sims,
+                      check_partial_equivalence=False, transform_dynamic_circuit=False)
     s = str(res.equivalence)
     if "not_equivalent" in s:
-        return False
-    if "equivalent" in s and "probably" not in s:
-        return True
-    return None
+        return "not_equivalent"
+    if "probably" in s:
+        return "probably_equivalent"
+    if "equivalent" in s:
+        return "equivalent"
+    return "unknown"

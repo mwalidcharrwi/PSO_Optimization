@@ -15,6 +15,7 @@ Three targets are supported:
 | `cliffordt` | {H, X, Rz(θ), CNOT} (Nam gate set; T-count reported) | fault-tolerant / Clifford+T benchmarks |
 | `continuous` | {U3, CNOT} (single-qubit runs fused) | NISQ devices, arbitrary rotations |
 | `hardware` | {U3, CNOT} on a coupling graph (initial/final layouts) | device-constrained compilation |
+| `ibm` | IBM native {rz, sx, x, ecr}, **fixed** existing mapping | re-optimising circuits that are already transpiled for an IBM device |
 
 ## 2. Key idea: search the space of *compilation decisions*, not circuits
 
@@ -209,7 +210,33 @@ library, the swarm can pick, per Toffoli, a network matching the layout it
 is co-evolving.  Results are verified with initial/final layouts and
 |0⟩ ancillas (`hardware/verify.py`).
 
-## 7. Complexity
+## 7. IBM-native mode (already-mapped circuits)
+
+Circuits exported by an IBM transpiler are already laid out and routed:
+every ECR acts on a coupled pair, in the device's native direction.  The
+`ibm` mode optimises them without touching the mapping.
+
+1. `ecr` is an IR gate.  The QASM reader uses it natively (instead of
+   inlining the file's `rzx`-based definition into 4 CNOTs) once the
+   definition is checked to be equivalent.  It also aliases
+   Qiskit-exported ECR variants such as `ecr_140451863465232`.
+2. **ECR lowering variants.**  A search over the 24 × 24 single-qubit
+   Cliffords finds 64 exact identities ECR = (P⊗Q)·CX·(R⊗S) per CNOT
+   orientation.  The 8 cheapest per orientation form a (2 × 8) variant site
+   for every ECR of the input, so the swarm decides how each ECR is exposed
+   to the CNOT-level passes.
+3. The usual sound passes and the 2-qubit resynthesis run on the same
+   coupled pairs, so connectivity is preserved by construction.
+4. **Native re-synthesis.**  Every CNOT is converted back to one ECR in the
+   native direction of its pair.  Among the 64 exact Clifford wrappings, the
+   one minimising the native cost of the two pending single-qubit runs is
+   chosen greedily.  Each run is then written with the fewest {rz, sx, x}
+   gates (1, 3 or 5; closed-form cost).
+5. Objective: `twoq` = (#ECR, #gates, depth).  Equivalence is checked on the
+   used qubits by simulation (≤ 20 qubits) or with MQT QCEC
+   (`qcpso/bench/qcec_verify.py`) for larger circuits.
+
+## 8. Complexity
 
 One evaluation = lowering + a constant number of linear-time passes (the
 commutation scans are bounded by wire length), i.e. roughly
@@ -217,7 +244,7 @@ O(|C| · w), where w is a small window factor.  KAK resynthesis is
 memoised per block unitary.  Memory is O(|C| + S·D) for S particles and D
 genes (D ≈ 3·#Toffolis + #rotations (capped) + slots + n_phys + 4).
 
-## 8. Using the framework
+## 9. Using the framework
 
 ```python
 from qcpso.io import load, save_qasm
