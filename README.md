@@ -27,6 +27,8 @@ the deterministic compiler, and a provenance-guided memetic local search.
 * Literature survey and research gaps: [docs/RELATED_WORK.md](docs/RELATED_WORK.md)
 * Novel directions (implemented and open): [docs/RESEARCH_DIRECTIONS.md](docs/RESEARCH_DIRECTIONS.md)
 * Benchmark results: [results/](results/)
+* **Honest assessment of what the proposed approach contributes (and what it does not):**
+  [docs/CONTRIBUTION_ASSESSMENT.md](docs/CONTRIBUTION_ASSESSMENT.md)
 
 ## Results on the built-in suites
 
@@ -92,6 +94,14 @@ HyPSO-QCO values are means over seeds.  All outputs are verified equivalent:
 circuits with ≤ 20 active qubits by statevector simulation, and the two with
 31–32 qubits by an exact Choi-state MPS check (`qcpso/bench/mps_verify.py`).  The optimised QASM files are in
 [results/ibm_testset/optimized/](results/ibm_testset/optimized/).
+
+Most of the total-gate reduction on these circuits comes from the
+deterministic native re-synthesis (median −20 %).  The swarm adds a median
+−3.1 % gates and is the only component that lowers the ECR count on 7 of the
+10 circuits.  Against GA and SA on the same decoder, HyPSO-QCO is never worse
+on ECR count and is significantly better than SA, but not significantly
+better than GA (which finds about 0.3 % fewer total gates).  See the
+assessment document for details.
 
 ## Installation
 

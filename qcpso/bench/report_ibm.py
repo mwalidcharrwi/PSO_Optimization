@@ -13,8 +13,9 @@ from collections import defaultdict
 
 import numpy as np
 
-METHODS = ["qiskit", "greedy", "spso", "hypso"]
-LABEL = {"qiskit": "Qiskit O3", "greedy": "greedy (no swarm)", "spso": "standard PSO", "hypso": "HyPSO-QCO"}
+METHODS = ["qiskit", "greedy", "spso", "ga", "sa", "hypso"]
+LABEL = {"qiskit": "Qiskit O3", "greedy": "greedy (no swarm)", "spso": "standard PSO", "ga": "GA", "sa": "SA",
+         "hypso": "HyPSO-QCO"}
 
 
 def _load(d):

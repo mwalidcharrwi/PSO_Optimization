@@ -4,18 +4,18 @@ IBM-native test set (test_circuits_new), mode `ibm`
 
 ## Primary metric per circuit (mean over seeds; best in bold)
 
-| circuit | qubits | lowered | greedy | hypso | spso | qiskit |
-|---|---|---|---|---|---|---|
-| add_17 | 17 | 499 | 499 | **493.7** | 494 | 499 |
-| heisenberg_8 | 8 | 420 | **420** | **420** | **420** | **420** |
-| mult_8 | 8 | 311 | 311 | **309** | 309.7 | 311 |
-| hubbard_8 | 8 | 1344 | 1344 | **1335.3** | 1338 | 1344 |
-| qae_17 | 17 | 541 | 541 | 530 | **528.7** | 541 |
-| qft_16 | 16 | 614 | 614 | **606.7** | 607.7 | 614 |
-| heisenberg_32 | 32 | 3942 | **3882** | **3882** | - | 4024 |
-| hhl_8 | 8 | 2377 | 2377 | **2376** | 2377 | 2377 |
-| grover_10 | 10 | 16397 | 16397 | **16395** | - | 16397 |
-| hubbard_18 | 31 | 33958 | 30431 | **30415** | - | 33456 |
+| circuit | qubits | lowered | greedy | hypso | spso | qiskit | ga | sa |
+|---|---|---|---|---|---|---|---|---|
+| add_17 | 17 | 499 | 499 | **493.7** | 494 | 499 | 497.3 | 497.3 |
+| heisenberg_8 | 8 | 420 | **420** | **420** | **420** | **420** | **420** | **420** |
+| mult_8 | 8 | 311 | 311 | **309** | 309.7 | 311 | **309** | 310.3 |
+| hubbard_8 | 8 | 1344 | 1344 | **1335.3** | 1338 | 1344 | 1340.3 | 1342.3 |
+| qae_17 | 17 | 541 | 541 | 530 | **528.7** | 541 | 534.3 | 539.3 |
+| qft_16 | 16 | 614 | 614 | **606.7** | 607.7 | 614 | 609.3 | 613.7 |
+| heisenberg_32 | 32 | 3942 | **3882** | **3882** | **3882** | 4024 | **3882** | **3882** |
+| hhl_8 | 8 | 2377 | 2377 | **2376** | 2377 | 2377 | **2376** | 2377 |
+| grover_10 | 10 | 16397 | 16397 | **16395** | - | 16397 | - | - |
+| hubbard_18 | 31 | 33958 | 30431 | **30415** | - | 33456 | - | - |
 
 ## All metrics of the reference method vs. lowered input
 
@@ -38,26 +38,32 @@ IBM-native test set (test_circuits_new), mode `ibm`
 |---|---|---|---|---|---|
 | greedy | 30.34 | 1.19 | 6.80 | 31.80 | 75.26 |
 | hypso | 33.02 | 1.76 | 2.27 | 33.08 | 2108.88 |
-| spso | 23.67 | 0.74 | 9.34 | 26.13 | 683.59 |
+| spso | 30.08 | 0.84 | 9.34 | 31.11 | 674.80 |
 | qiskit | 10.38 | -0.06 | -8.36 | 9.13 | 62.56 |
+| ga | 30.80 | 0.60 | 10.87 | 31.59 | 515.22 |
+| sa | 29.44 | 0.32 | 10.43 | 30.67 | 379.99 |
 
 ## `hypso` vs. each method on `twoq` (per-circuit means)
 
 | method | wins | ties | losses | mean improvement (%) | Wilcoxon p (one-sided) |
 |---|---|---|---|---|---|
 | greedy | 8 | 2 | 0 | 0.57 | 0.00391 |
-| spso | 5 | 1 | 1 | 0.06 | 0.141 |
+| spso | 5 | 2 | 1 | 0.05 | 0.141 |
 | qiskit | 9 | 1 | 0 | 1.83 | 0.00195 |
+| ga | 4 | 4 | 0 | 0.29 | 0.0625 |
+| sa | 6 | 2 | 0 | 0.58 | 0.0156 |
 
 ## Friedman test and average ranks (lower is better)
 
-Friedman: chi2 = 15.706, p = 0.0013
+Friedman: chi2 = 27.343, p = 4.89e-05
 
 | method | average rank |
 |---|---|
-| hypso | 1.36 |
-| spso | 2.07 |
-| greedy | 3.29 |
-| qiskit | 3.29 |
+| hypso | 1.81 |
+| spso | 2.62 |
+| ga | 2.75 |
+| sa | 3.81 |
+| greedy | 4.81 |
+| qiskit | 5.19 |
 
-Equivalence check: 57 verified, 6 not checked (too large, or --no-verify), 0 FAILED.
+Equivalence check: 97 verified, 9 not checked (too large, or --no-verify), 0 FAILED.
