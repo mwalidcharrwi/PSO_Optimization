@@ -144,19 +144,26 @@ def bidirectional_layout(circ: Circuit, cmap: CouplingMap, trials: int = 4, iter
                          seed: int = 0, **params):
     """SabreLayout: forward/backward routing passes refine a random layout;
     the best of ``trials`` restarts (by SWAP count) is returned."""
+    sw, layout = layout_candidates(circ, cmap, trials, iterations, seed, **params)[0]
+    return layout, sw
+
+
+def layout_candidates(circ: Circuit, cmap: CouplingMap, trials: int = 4, iterations: int = 3,
+                      seed: int = 0, **params) -> list[tuple[int, list[int]]]:
+    """All SabreLayout trial results as (n_swaps, layout), best first."""
     rng = random.Random(seed)
     n = circ.n_qubits
     rev = reverse_circuit(circ)
-    best, best_sw = None, None
+    res = []
     for t in range(trials):
         layout = list(range(n)) if t == 0 else rng.sample(range(cmap.n), n)
         for _ in range(iterations):
             _, fin, _ = sabre_route(circ, cmap, layout, seed=seed + t, emit=False, **params)
             _, layout, _ = sabre_route(rev, cmap, fin, seed=seed + t, emit=False, **params)
         _, _, sw = sabre_route(circ, cmap, layout, seed=seed + t, emit=False, **params)
-        if best_sw is None or sw < best_sw:
-            best, best_sw = list(layout), sw
-    return best, best_sw
+        res.append((sw, list(layout)))
+    res.sort(key=lambda r: r[0])
+    return res
 
 
 def lower_swaps(circ: Circuit) -> Circuit:

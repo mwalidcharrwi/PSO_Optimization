@@ -1,5 +1,3 @@
-import numpy as np
-
 from qcpso.bench.generators import cuccaro_adder, qft
 from qcpso.decompose import Lowerer
 from qcpso.hardware import HardwareSpec, bidirectional_layout, lower_swaps, sabre_route

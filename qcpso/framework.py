@@ -26,7 +26,6 @@ thousands of gates.
 """
 from __future__ import annotations
 
-import math
 import multiprocessing as mp
 import time
 import zlib
@@ -214,7 +213,10 @@ class CircuitProblem:
         pl = tuple(0 if x[i] < 0.5 else 1 + int((x[i] - 0.5) * 2048)
                    for i in range(self.place_start, self.place_start + self.n_place))
         sc = tuple(self._cat(x[self.sched_start + j], len(self.passes)) for j in range(self.n_sched))
-        hw = tuple(np.round(x[self.hw_start:], 6)) if self.mode == "hardware" else ()
+        hw = ()
+        if self.mode == "hardware":  # key on the decoded layout, not on the raw random keys
+            layout, params = self.hw.decode(x[self.hw_start:], self.circ.n_qubits)
+            hw = (tuple(layout), tuple(sorted(params.items())))
         return (cats, pl, sc, hw)
 
     def build(self, x) -> tuple[Circuit, dict]:
@@ -253,9 +255,27 @@ class CircuitProblem:
             x[i] = 0.5 / k[i] if k[i] > 1 else (0.25 if k[i] == 0 else 0.5)
         for j, name in enumerate(GREEDY_SCHEDULE[: self.n_sched]):
             x[self.sched_start + j] = (self.passes.index(name) + 0.5) / len(self.passes)
-        if self.mode == "hardware":
-            x[self.hw_start:] = self.hw.seed_genes(self.circ)
+        if self.mode == "hardware":  # several good SabreLayout layouts as elite seeds
+            if getattr(self, "_hw_seeds", None) is None:
+                self._hw_seeds = self.hw.seed_genes_list(self.circ, k=3)
+            seeds = []
+            for g in self._hw_seeds:
+                y = x.copy()
+                y[self.hw_start:] = g
+                seeds.append(y)
+            return seeds
         return [x]
+
+    def perm_move(self, y, rng):
+        """Hardware local move: relocate one logical qubit to a neighbouring
+        physical qubit (swapping the random keys of the two positions)."""
+        n = self.hw.cmap.n
+        layout, _ = self.hw.decode(y[self.hw_start:], self.circ.n_qubits)
+        p = layout[int(rng.integers(len(layout)))]
+        nb = sorted(self.hw.cmap.adj[p])
+        q = int(rng.choice(nb)) if nb and rng.random() < 0.8 else int(rng.integers(n))
+        a, b = self.hw_start + p, self.hw_start + q
+        y[a], y[b] = y[b], y[a]
 
     def evaluate_batch(self, X) -> list:
         X = np.atleast_2d(X)
@@ -372,4 +392,4 @@ def greedy(circ: Circuit, mode: str = "cliffordt", hardware=None) -> Circuit:
     return out
 
 
-__all__ = ["HyPSOConfig", "CircuitProblem", "OptimizeResult", "optimize", "verify", "greedy", "math"]
+__all__ = ["HyPSOConfig", "CircuitProblem", "OptimizeResult", "optimize", "verify", "greedy"]

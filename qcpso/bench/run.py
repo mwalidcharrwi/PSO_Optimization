@@ -13,11 +13,9 @@ Outputs ``results.csv`` (one row per circuit x method x seed),
 from __future__ import annotations
 
 import argparse
-import copy
 import csv
 import glob
 import json
-import math
 import os
 import sys
 import time
@@ -313,6 +311,10 @@ def main(argv=None):
     summary = summarise(rows, original, objective)
     with open(os.path.join(args.out, "summary.md"), "w") as fh:
         fh.write(f"Mode: `{args.mode}`, budget: {args.budget} unique evaluations, seeds: {args.seeds}\n\n")
+        if args.mode == "hardware":
+            fh.write(f"Device: `{hardware.cmap.name}`.  The `lowered` column is the *unrouted* logical circuit "
+                     "(no connectivity constraint); all other columns are routed, connectivity-respecting "
+                     "circuits verified with their initial/final layouts.\n\n")
         fh.write(summary)
     print("\n" + summary)
     return rows

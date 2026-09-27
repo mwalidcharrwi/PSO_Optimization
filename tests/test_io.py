@@ -1,7 +1,5 @@
-import numpy as np
 import pytest
 
-from qcpso.circuit import Circuit
 from qcpso.io import parse_qasm, parse_qc, parse_real, to_qasm
 from qcpso.sim import equal_up_to_phase, equivalent, unitary
 

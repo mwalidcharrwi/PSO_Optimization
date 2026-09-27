@@ -8,7 +8,7 @@ from ..circuit import Circuit
 from ..decompose import Lowerer
 from ..passes import cancel
 from .devices import CouplingMap, device
-from .router import bidirectional_layout, lower_swaps, sabre_route
+from .router import bidirectional_layout, layout_candidates, lower_swaps, sabre_route
 
 EXT_SIZES = (0, 5, 10, 20, 40)
 WEIGHTS = (0.1, 0.25, 0.5, 0.75, 1.0)
@@ -67,9 +67,20 @@ class HardwareSpec:
 
     def seed_genes(self, circ: Circuit) -> np.ndarray:
         """Genes of the SabreLayout (bidirectional) layout of the default lowering."""
+        return self.seed_genes_list(circ, k=1)[0]
+
+    def seed_genes_list(self, circ: Circuit, k: int = 3) -> list[np.ndarray]:
+        """Genes of the k best distinct SabreLayout layouts (fewest SWAPs first)."""
         base = cancel(Lowerer().lower(circ))
-        layout, _ = bidirectional_layout(base, self.cmap, trials=self.layout_trials, seed=self.seed)
-        return self.encode(layout)
+        cands = layout_candidates(base, self.cmap, trials=max(self.layout_trials, 2 * k), seed=self.seed)
+        out, seen = [], set()
+        for _, layout in cands:
+            if tuple(layout) not in seen:
+                seen.add(tuple(layout))
+                out.append(self.encode(layout))
+            if len(out) >= k:
+                break
+        return out
 
     def map_and_route(self, circ: Circuit, genes, placement=None):
         layout, params = self.decode(genes, circ.n_qubits)

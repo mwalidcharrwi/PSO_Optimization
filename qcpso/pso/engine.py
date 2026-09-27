@@ -290,9 +290,14 @@ class SwarmOptimizer:
         if self.p.guided and hasattr(self.problem, "site_info"):
             info = self.problem.site_info(x)
         perm_groups = getattr(self.problem, "perm_groups", None) or []
+        perm_move = getattr(self.problem, "perm_move", None) if perm_groups else None
         batch = []
         for _ in range(self.p.memetic_evals):
             y = x.copy()
+            if perm_move is not None and rng.random() < 0.35:  # layout move (hardware mode)
+                perm_move(y, rng)
+                batch.append(y)
+                continue
             r = rng.random()
             if info is not None and info[0] and r < 0.85:
                 sites, w, nbrs = info

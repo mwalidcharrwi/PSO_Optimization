@@ -24,7 +24,6 @@ factor tuple, which is how particles of the swarm steer the lowering.
 """
 from __future__ import annotations
 
-import math
 from collections import deque
 from functools import lru_cache
 from typing import Callable
@@ -430,24 +429,5 @@ def lower(circ: Circuit, choice: ChoiceFn | None = None, **kw) -> Circuit:
     return Lowerer(**kw).lower(circ, choice)
 
 
-def angle_is_trivial(theta: float) -> bool:
-    return is_zero_angle(theta)
-
-
 __all__ = ["Lowerer", "lower", "ccz_networks", "ccz_template", "mcx_gates", "mcu_gates", "BASE_GATES"]
 
-
-def _selftest():  # pragma: no cover - handy for debugging
-    from .sim import equivalent
-    c = Circuit(3).append("ccx", (0, 1, 2))
-    low = Lowerer()
-    for net in range(len(low.networks)):
-        for pol in range(2):
-            for pl in range(2):
-                d = low.lower(c, lambda k, s: (net, pol, pl))
-                assert equivalent(c, d), (net, pol, pl)
-    return True
-
-
-if __name__ == "__main__":  # pragma: no cover
-    print(_selftest(), math.pi)
