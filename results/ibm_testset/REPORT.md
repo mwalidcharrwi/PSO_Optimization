@@ -29,12 +29,19 @@ the input's native direction; this was checked for every saved circuit.
 * Standard PSO was not run on the three largest circuits because of compute
   time.
 
-**Verification.**  Every output of the 8 circuits with ≤ 20 active qubits is
-verified equivalent to its input by statevector simulation on the active
-qubits.  `heisenberg_32` and `hubbard_18` (31–32 active qubits) are too
-large for simulation here, and QCEC did not finish within 2 h, so they are
-*not formally verified*.  They were produced by the same sound passes that
-are verified on the other 8 circuits and in the test suite.
+**Verification.**  All 10 HyPSO-QCO outputs are verified equivalent to their
+inputs.
+* The 8 circuits with ≤ 20 active qubits use statevector simulation on the
+  active qubits; every run of every method was checked.
+* `heisenberg_32` and `hubbard_18` (31–32 active qubits) use a Choi-state
+  MPS "alternating miter" (`qcpso/bench/mps_verify.py`), with no truncation:
+  * `heisenberg_32`: |tr(U_in U_opt^†)|/2^n = 1 − 7e-15, peak bond 8, 42 s.
+  * `hubbard_18`: 1 − 4.4e-11, peak bond 256, 18 min.
+
+  As a sensitivity check, deleting one gate gives 2e-10, and changing one
+  rotation by 1e-3 rad deviates by 1.3e-7, far above the observed values.
+  Details are in `verification_large.json`.  QCEC did not finish within 2 h
+  on these two circuits.
 
 **Files.**
 * `optimized/<circuit>_hypso.qasm`: the best HyPSO-QCO circuit per benchmark.

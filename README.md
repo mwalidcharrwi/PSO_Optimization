@@ -84,13 +84,13 @@ mapping and native ECR directions; the full protocol is in
 | qft_16 | 614 → **607** (614) | 3,444 → **2,668** (3,505) |
 | hubbard_8 | 1,344 → **1,335** (1,344) | 8,125 → **5,956** (8,070) |
 | hhl_8 | 2,377 → **2,376** (2,377) | 18,165 → **15,402** (19,083) |
-| heisenberg_32† | 3,942 → **3,882** (4,024) | 58,848 → **14,740** (22,592) |
+| heisenberg_32 | 3,942 → **3,882** (4,024) | 58,848 → **14,740** (22,592) |
 | grover_10 | 16,397 → **16,395** (16,397) | 93,235 → **71,485** (93,315) |
-| hubbard_18† | 33,958 → **30,415** (33,456) | 357,535 → **135,134** (153,652) |
+| hubbard_18 | 33,958 → **30,415** (33,456) | 357,535 → **135,134** (153,652) |
 
-HyPSO-QCO values are means over seeds.  All outputs with ≤ 20 active qubits
-are verified equivalent by simulation.  † 31–32 active qubits: too large to
-verify here.  The optimised QASM files are in
+HyPSO-QCO values are means over seeds.  All outputs are verified equivalent:
+circuits with ≤ 20 active qubits by statevector simulation, and the two with
+31–32 qubits by an exact Choi-state MPS check (`qcpso/bench/mps_verify.py`).  The optimised QASM files are in
 [results/ibm_testset/optimized/](results/ibm_testset/optimized/).
 
 ## Installation

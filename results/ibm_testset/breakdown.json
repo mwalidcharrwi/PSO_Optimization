@@ -1,0 +1,272 @@
+{
+ "mult_8": {
+  "S0": {
+   "twoq": 311,
+   "gates": 1898,
+   "depth": 1138
+  },
+  "S1": {
+   "twoq": 311,
+   "gates": 1546,
+   "depth": 882
+  },
+  "S2": {
+   "twoq": 311,
+   "gates": 1532,
+   "depth": 869
+  },
+  "S3": {
+   "twoq": 311,
+   "gates": 1532,
+   "depth": 869
+  },
+  "S4": {
+   "twoq": 309,
+   "gates": 1418,
+   "depth": 832
+  }
+ },
+ "heisenberg_8": {
+  "S0": {
+   "twoq": 420,
+   "gates": 2127,
+   "depth": 529
+  },
+  "S1": {
+   "twoq": 420,
+   "gates": 1449,
+   "depth": 386
+  },
+  "S2": {
+   "twoq": 420,
+   "gates": 1461,
+   "depth": 386
+  },
+  "S3": {
+   "twoq": 420,
+   "gates": 1461,
+   "depth": 386
+  },
+  "S4": {
+   "twoq": 420,
+   "gates": 1312,
+   "depth": 358
+  }
+ },
+ "add_17": {
+  "S0": {
+   "twoq": 499,
+   "gates": 2812,
+   "depth": 1003
+  },
+  "S1": {
+   "twoq": 499,
+   "gates": 2275,
+   "depth": 754
+  },
+  "S2": {
+   "twoq": 499,
+   "gates": 2268,
+   "depth": 745
+  },
+  "S3": {
+   "twoq": 499,
+   "gates": 2268,
+   "depth": 745
+  },
+  "S4": {
+   "twoq": 491,
+   "gates": 2193,
+   "depth": 720
+  }
+ },
+ "qae_17": {
+  "S0": {
+   "twoq": 541,
+   "gates": 3033,
+   "depth": 1066
+  },
+  "S1": {
+   "twoq": 541,
+   "gates": 2466,
+   "depth": 803
+  },
+  "S2": {
+   "twoq": 541,
+   "gates": 2467,
+   "depth": 792
+  },
+  "S3": {
+   "twoq": 541,
+   "gates": 2467,
+   "depth": 792
+  },
+  "S4": {
+   "twoq": 527,
+   "gates": 2412,
+   "depth": 779
+  }
+ },
+ "qft_16": {
+  "S0": {
+   "twoq": 614,
+   "gates": 3444,
+   "depth": 1009
+  },
+  "S1": {
+   "twoq": 614,
+   "gates": 2741,
+   "depth": 735
+  },
+  "S2": {
+   "twoq": 614,
+   "gates": 2752,
+   "depth": 727
+  },
+  "S3": {
+   "twoq": 614,
+   "gates": 2752,
+   "depth": 727
+  },
+  "S4": {
+   "twoq": 604,
+   "gates": 2677,
+   "depth": 713
+  }
+ },
+ "hubbard_8": {
+  "S0": {
+   "twoq": 1344,
+   "gates": 8125,
+   "depth": 4400
+  },
+  "S1": {
+   "twoq": 1344,
+   "gates": 6222,
+   "depth": 3284
+  },
+  "S2": {
+   "twoq": 1344,
+   "gates": 6144,
+   "depth": 3245
+  },
+  "S3": {
+   "twoq": 1344,
+   "gates": 6144,
+   "depth": 3245
+  },
+  "S4": {
+   "twoq": 1334,
+   "gates": 6002,
+   "depth": 3175
+  }
+ },
+ "hhl_8": {
+  "S0": {
+   "twoq": 2377,
+   "gates": 18165,
+   "depth": 10641
+  },
+  "S1": {
+   "twoq": 2377,
+   "gates": 16107,
+   "depth": 9277
+  },
+  "S2": {
+   "twoq": 2377,
+   "gates": 15670,
+   "depth": 8914
+  },
+  "S3": {
+   "twoq": 2377,
+   "gates": 15670,
+   "depth": 8914
+  },
+  "S4": {
+   "twoq": 2375,
+   "gates": 15390,
+   "depth": 9000
+  }
+ },
+ "heisenberg_32": {
+  "S0": {
+   "twoq": 3942,
+   "gates": 58848,
+   "depth": 7143
+  },
+  "S1": {
+   "twoq": 3942,
+   "gates": 14540,
+   "depth": 2410
+  },
+  "S2": {
+   "twoq": 3942,
+   "gates": 14545,
+   "depth": 2412
+  },
+  "S3": {
+   "twoq": 3882,
+   "gates": 14855,
+   "depth": 2457
+  },
+  "S4": {
+   "twoq": 3882,
+   "gates": 14740,
+   "depth": 2422
+  }
+ },
+ "grover_10": {
+  "S0": {
+   "twoq": 16397,
+   "gates": 93235,
+   "depth": 43923
+  },
+  "S1": {
+   "twoq": 16397,
+   "gates": 74623,
+   "depth": 35424
+  },
+  "S2": {
+   "twoq": 16397,
+   "gates": 73444,
+   "depth": 33578
+  },
+  "S3": {
+   "twoq": 16397,
+   "gates": 73444,
+   "depth": 33578
+  },
+  "S4": {
+   "twoq": 16395,
+   "gates": 71485,
+   "depth": 34216
+  }
+ },
+ "hubbard_18": {
+  "S0": {
+   "twoq": 33958,
+   "gates": 357535,
+   "depth": 136644
+  },
+  "S1": {
+   "twoq": 33926,
+   "gates": 131273,
+   "depth": 56478
+  },
+  "S2": {
+   "twoq": 33926,
+   "gates": 131231,
+   "depth": 56478
+  },
+  "S3": {
+   "twoq": 30431,
+   "gates": 140926,
+   "depth": 59655
+  },
+  "S4": {
+   "twoq": 30415,
+   "gates": 135134,
+   "depth": 57219
+  }
+ }
+}
