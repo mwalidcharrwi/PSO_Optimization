@@ -255,6 +255,21 @@ def summarise(rows: list[dict], original: dict, objective: str, reference: str =
     return "\n".join(lines) + "\n"
 
 
+_FIELDS = ["circuit", "n_qubits", "method", "seed", "gates", "cx", "twoq", "oneq", "t", "h", "depth",
+           "twoq_depth", "time", "evals", "verified"]
+
+
+def _append_partial(out_dir: str, row: dict) -> None:
+    """Crash-safe incremental log of finished runs (results_partial.csv)."""
+    path = os.path.join(out_dir, "results_partial.csv")
+    new = not os.path.exists(path)
+    with open(path, "a", newline="") as fh:
+        w = csv.DictWriter(fh, fieldnames=_FIELDS, extrasaction="ignore")
+        if new:
+            w.writeheader()
+        w.writerow(row)
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--suite", default="builtin", help="builtin|tiny|large|<dir>|<file,file,...>")
@@ -324,7 +339,8 @@ def main(argv=None):
                 if hist:
                     conv[f"{circ.name}|{m}|{s}"] = hist
                 rows.append(row)
-                print(f"   {m:16s} s={s} gates={row['gates']:6d} cx={row['cx']:5d} t={row['t']:5d} "
+                _append_partial(args.out, row)
+                print(f"   {m:16s} s={s} gates={row['gates']:6d} cx={row['cx']:5d} 2q={row['twoq']:6d} t={row['t']:5d} "
                       f"depth={row['depth']:5d} time={row['time']:7.2f}s verified={row['verified']}", flush=True)
     fields = ["circuit", "n_qubits", "method", "seed", "gates", "cx", "twoq", "oneq", "t", "h", "depth",
               "twoq_depth", "time", "evals", "verified"]
