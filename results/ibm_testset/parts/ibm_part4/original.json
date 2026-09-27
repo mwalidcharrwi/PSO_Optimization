@@ -1,0 +1,1 @@
+{"grover_10": {"gates": 93235, "cx": 0, "twoq": 16397, "oneq": 76838, "t": 209, "h": 0, "depth": 43923, "twoq_depth": 10895, "n_qubits": 10}, "hubbard_18": {"gates": 357535, "cx": 0, "twoq": 33958, "oneq": 323577, "t": 0, "h": 0, "depth": 136644, "twoq_depth": 21769, "n_qubits": 31}}
