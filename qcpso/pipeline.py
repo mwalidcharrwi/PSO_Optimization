@@ -13,7 +13,7 @@ from .decompose import BASE_GATES, Lowerer
 from .passes import cancel, fuse_1q, hadamard_reduce, phase_fold
 from .passes.kak import resynthesize_blocks
 
-MODES = ("cliffordt", "continuous", "hardware")
+MODES = ("cliffordt", "continuous", "hardware", "ibm")
 
 # pass library exposed to the swarm (index 0 = no-op)
 PASS_LIBRARY = ("skip", "cancel", "fold", "hred", "fold_cancel", "kak")
@@ -115,6 +115,7 @@ def fidelity_cost(m: dict, e1: float = 1e-3, e2: float = 1e-2) -> float:
 OBJECTIVES: dict[str, Callable[[dict], tuple]] = {
     "gates": lambda m: (m["gates"], m["cx"], m["t"], m["depth"]),
     "cx": lambda m: (m["cx"], m["gates"], m["depth"]),
+    "twoq": lambda m: (m["twoq"], m["gates"], m["depth"]),
     "t": lambda m: (m["t"], m["cx"], m["gates"], m["depth"]),
     "depth": lambda m: (m["depth"], m["cx"], m["gates"]),
     "fidelity": lambda m: (round(fidelity_cost(m), 12), m["depth"]),
@@ -122,4 +123,4 @@ OBJECTIVES: dict[str, Callable[[dict], tuple]] = {
 
 
 def default_objective(mode: str) -> str:
-    return "gates" if mode == "cliffordt" else "cx"
+    return {"cliffordt": "gates", "ibm": "twoq"}.get(mode, "cx")

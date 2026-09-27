@@ -68,9 +68,13 @@ def load_suite(spec: str, scale: str = "small") -> list[Circuit]:
     return circs
 
 
-def _make_cfg(mode, objective, budget, seed, workers, hardware, overrides=None):
+SWARM_SIZE = 16
+
+
+def _make_cfg(mode, objective, budget, seed, workers, hardware, overrides=None, time_limit=None):
     cfg = HyPSOConfig(mode=mode, objective=objective, workers=workers, hardware=hardware,
-                      pso=PSOParams(max_evals=budget, max_iter=10 ** 6, seed=seed))
+                      pso=PSOParams(max_evals=budget, max_iter=10 ** 6, seed=seed, time_limit=time_limit,
+                                    swarm_size=SWARM_SIZE))
     for k, v in (overrides or {}).items():
         if k == "pso":
             for kk, vv in v.items():
@@ -81,7 +85,7 @@ def _make_cfg(mode, objective, budget, seed, workers, hardware, overrides=None):
 
 
 def run_method(method: str, circ: Circuit, mode: str, objective: str, budget: int, seed: int,
-               workers: int = 1, hardware=None, do_verify: bool = True) -> dict:
+               workers: int = 1, hardware=None, do_verify: bool = True, time_limit: float | None = None) -> dict:
     t0 = time.time()
     history = None
     evals = 0
@@ -93,7 +97,7 @@ def run_method(method: str, circ: Circuit, mode: str, objective: str, budget: in
         info = {}
     else:
         overrides = ABLATIONS.get(method)
-        cfg = _make_cfg(mode, objective, budget, seed, workers, hardware, overrides)
+        cfg = _make_cfg(mode, objective, budget, seed, workers, hardware, overrides, time_limit)
         problem = CircuitProblem(circ, cfg)
         try:
             if method == "greedy":
@@ -105,7 +109,8 @@ def run_method(method: str, circ: Circuit, mode: str, objective: str, budget: in
                 cls = {"spso": StandardPSO, "spso_seeded": StandardPSO, "ga": GeneticAlgorithm,
                        "sa": SimulatedAnnealing, "rs": RandomSearch}[method]
                 seeded = method != "spso"
-                res = cls(problem, max_evals=budget, seed=seed, seeded=seeded).run()
+                kw = {"swarm": SWARM_SIZE} if cls is StandardPSO else ({"pop": SWARM_SIZE} if cls is GeneticAlgorithm else {})
+                res = cls(problem, max_evals=budget, seed=seed, seeded=seeded, time_limit=time_limit).run(**kw)
                 x, history = res.best_x, res.history
             out, info = problem.build(x)
             evals = problem.n_evals
@@ -124,6 +129,7 @@ def run_method(method: str, circ: Circuit, mode: str, objective: str, budget: in
                evals=evals, verified=ok, **m)
     if history:
         row["_history"] = [(h[1], list(h[3]) if isinstance(h[3], tuple) else h[3]) for h in history]
+    row["_circuit"] = out
     return row
 
 
@@ -131,7 +137,7 @@ def run_method(method: str, circ: Circuit, mode: str, objective: str, budget: in
 # statistics / reporting
 # --------------------------------------------------------------------------- #
 def _primary(objective):
-    return {"gates": "gates", "cx": "cx", "t": "t", "depth": "depth", "fidelity": "cx"}[objective]
+    return {"gates": "gates", "cx": "cx", "t": "t", "depth": "depth", "fidelity": "cx", "twoq": "twoq"}[objective]
 
 
 def summarise(rows: list[dict], original: dict, objective: str, reference: str = "hypso") -> str:
@@ -147,7 +153,7 @@ def summarise(rows: list[dict], original: dict, objective: str, reference: str =
             if not rs:
                 continue
             d = {}
-            for k in ("gates", "cx", "t", "depth", "time"):
+            for k in ("gates", "cx", "twoq", "t", "depth", "time"):
                 vals = [r[k] for r in rs]
                 d[k] = float(np.mean(vals))
                 d[k + "_std"] = float(np.std(vals))
@@ -176,28 +182,28 @@ def summarise(rows: list[dict], original: dict, objective: str, reference: str =
     lines.append("")
     # ---- secondary metrics table ------------------------------------------
     lines += ["## All metrics of the reference method vs. lowered input", "",
-              "| circuit | gates | cx | T | depth | time (s) |", "|---|---|---|---|---|---|"]
+              "| circuit | gates | 2q gates | T | depth | time (s) |", "|---|---|---|---|---|---|"]
     for c in circuits:
         if reference not in agg[c]:
             continue
         o, d = original[c], agg[c][reference]
-        lines.append(f"| {c} | {o['gates']} -> {d['gates']:.1f} | {o['cx']} -> {d['cx']:.1f} | "
+        lines.append(f"| {c} | {o['gates']} -> {d['gates']:.1f} | {o['twoq']} -> {d['twoq']:.1f} | "
                      f"{o['t']} -> {d['t']:.1f} | {o['depth']} -> {d['depth']:.1f} | {d['time']:.1f} |")
     lines.append("")
     # ---- aggregate reductions ------------------------------------------------
     lines += ["## Average reduction w.r.t. the lowered input (%)", "",
-              "| method | gates | cx | T | depth | mean time (s) |", "|---|---|---|---|---|---|"]
+              "| method | gates | 2q gates | T | depth | mean time (s) |", "|---|---|---|---|---|---|"]
     for m in methods:
         red = defaultdict(list)
         tt = []
         for c in circuits:
             if m not in agg[c]:
                 continue
-            for k in ("gates", "cx", "t", "depth"):
+            for k in ("gates", "twoq", "t", "depth"):
                 if original[c][k] > 0:
                     red[k].append(100.0 * (1 - agg[c][m][k] / original[c][k]))
             tt.append(agg[c][m]["time"])
-        cells = [f"{np.mean(red[k]):.2f}" if red[k] else "-" for k in ("gates", "cx", "t", "depth")]
+        cells = [f"{np.mean(red[k]):.2f}" if red[k] else "-" for k in ("gates", "twoq", "t", "depth")]
         lines.append(f"| {m} | " + " | ".join(cells) + f" | {np.mean(tt):.2f} |")
     lines.append("")
     # ---- pairwise statistics --------------------------------------------------
@@ -252,7 +258,7 @@ def summarise(rows: list[dict], original: dict, objective: str, reference: str =
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--suite", default="builtin", help="builtin|tiny|large|<dir>|<file,file,...>")
-    ap.add_argument("--mode", default="cliffordt", choices=["cliffordt", "continuous", "hardware"])
+    ap.add_argument("--mode", default="cliffordt", choices=["cliffordt", "continuous", "hardware", "ibm"])
     ap.add_argument("--objective", default=None, choices=list(OBJECTIVES))
     ap.add_argument("--methods", default=DEFAULT_METHODS)
     ap.add_argument("--budget", type=int, default=600, help="unique evaluations per search run")
@@ -260,6 +266,9 @@ def main(argv=None):
     ap.add_argument("--workers", type=int, default=1)
     ap.add_argument("--device", default=None, help="hardware mode: device name (see qcpso.hardware.devices)")
     ap.add_argument("--no-verify", action="store_true")
+    ap.add_argument("--time-limit", type=float, default=None, help="seconds per search run (in addition to --budget)")
+    ap.add_argument("--swarm", type=int, default=16, help="swarm / population size of the search methods")
+    ap.add_argument("--save-circuits", action="store_true", help="write every output circuit to <out>/circuits/")
     ap.add_argument("--out", default="results")
     args = ap.parse_args(argv)
     objective = args.objective or default_objective(args.mode)
@@ -273,14 +282,19 @@ def main(argv=None):
         from ..hardware import baselines as hwb
         methods = [m for m in methods if m not in external.EXTERNAL] + \
             [m for m in args.methods.split(",") if m in hwb.HW_BASELINES]
+    global SWARM_SIZE
+    SWARM_SIZE = args.swarm
     circuits = load_suite(args.suite)
     os.makedirs(args.out, exist_ok=True)
+    if args.save_circuits:
+        os.makedirs(os.path.join(args.out, "circuits"), exist_ok=True)
     rows, conv, original = [], {}, {}
     from ..decompose import Lowerer
     low = Lowerer()
     for circ in circuits:
-        om = metrics(low.lower(circ))
-        om["n_qubits"] = circ.n_qubits
+        # reference: the lowered input; for already-compiled IBM circuits the input itself
+        om = metrics(circ) if args.mode == "ibm" else metrics(low.lower(circ))
+        om["n_qubits"] = len(circ.used_qubits()) if args.mode == "ibm" else circ.n_qubits
         original[circ.name] = om
         print(f"== {circ.name} ({circ.n_qubits} qubits, {om['gates']} lowered gates)", flush=True)
         for m in methods:
@@ -293,10 +307,19 @@ def main(argv=None):
                         row = hwb.run_hw_baseline(m, circ, hardware, seed=s, do_verify=not args.no_verify)
                     else:
                         row = run_method(m, circ, args.mode, objective, args.budget, s, args.workers,
-                                         hardware, not args.no_verify)
+                                         hardware, not args.no_verify, args.time_limit)
                 except Exception as exc:
                     print(f"   [error] {m} seed {s}: {type(exc).__name__}: {exc}", file=sys.stderr)
                     continue
+                out_circ = row.pop("_circuit", None)
+                if args.save_circuits and out_circ is not None:
+                    from ..io import save_qasm
+                    fn = f"{circ.name}__{m}__s{s}.qasm".replace("^", "")
+                    try:
+                        out_circ.meta = dict(circ.meta)
+                        save_qasm(out_circ, os.path.join(args.out, "circuits", fn), clifford_t_names=False)
+                    except Exception as exc:  # pragma: no cover
+                        print(f"   [save-error] {fn}: {exc}", file=sys.stderr)
                 hist = row.pop("_history", None)
                 if hist:
                     conv[f"{circ.name}|{m}|{s}"] = hist
@@ -311,6 +334,8 @@ def main(argv=None):
         w.writerows(rows)
     with open(os.path.join(args.out, "convergence.json"), "w") as fh:
         json.dump(conv, fh)
+    with open(os.path.join(args.out, "original.json"), "w") as fh:
+        json.dump(original, fh)
     summary = summarise(rows, original, objective)
     with open(os.path.join(args.out, "summary.md"), "w") as fh:
         fh.write(f"Mode: `{args.mode}`, budget: {args.budget} unique evaluations, seeds: {args.seeds}\n\n")

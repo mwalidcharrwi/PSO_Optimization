@@ -33,10 +33,11 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from .circuit import Circuit
+from .circuit import Circuit, Gate
 from .decompose import Lowerer
 from .pipeline import (GREEDY_SCHEDULE, OBJECTIVES, PASS_LIBRARY, apply_pass, cleanup,
                        default_objective, finish, metrics)
+from .native import native_directions, to_native
 from .pso.engine import PSOParams, SwarmOptimizer
 
 _WORKER_PROBLEM = None
@@ -52,7 +53,7 @@ def _worker_eval(x):
 
 @dataclass
 class HyPSOConfig:
-    mode: str = "cliffordt"            # "cliffordt" | "continuous" | "hardware"
+    mode: str = "cliffordt"            # "cliffordt" | "continuous" | "hardware" | "ibm"
     objective: str | None = None       # key of pipeline.OBJECTIVES (default by mode)
     n_schedule_slots: int = 6
     use_variants: bool = True
@@ -79,6 +80,7 @@ class CircuitProblem:
         self.obj_fn = OBJECTIVES[self.objective]
         self.lowerer = Lowerer(topology_variants=(cfg.mode == "hardware"))
         self.passes = PASS_LIBRARY if cfg.mode != "cliffordt" else PASS_LIBRARY[:-1]
+        self.native_dirs = native_directions(circ) if cfg.mode == "ibm" else set()
         card: list[int] = []
         # ---- variant genes (provenance keyed) ----
         self.var_index: dict[tuple, list[int]] = {}
@@ -240,6 +242,11 @@ class CircuitProblem:
             target = "continuous" if self.hw.continuous else "cliffordt"
             circ = cleanup(circ, placement, target)  # all passes preserve connectivity
             circ = finish(circ, target, placement)
+        elif self.mode == "ibm":
+            # already-mapped IBM circuits: optimise in {1q, CX} on the same coupled
+            # pairs, then return to {rz, sx, x, ecr} in the native ECR directions
+            circ = finish(circ, "continuous", placement)
+            circ = to_native(circ, self.native_dirs)
         else:
             circ = finish(circ, self.mode, placement)
         return circ, info
@@ -383,10 +390,15 @@ def verify(original: Circuit, optimised: Circuit, info: dict | None = None) -> b
     if "initial_layout" in info:
         from .hardware.verify import mapped_equivalent
         return mapped_equivalent(original, optimised, info["initial_layout"], info["final_layout"])
-    n = max(original.n_qubits, optimised.n_qubits)
-    if n > 20:
+    # same register, no relabelling: compare on the qubits that are actually used
+    used = sorted(original.used_qubits() | optimised.used_qubits())
+    if len(used) > 20:
         return None
-    return equivalent(original, optimised)
+    idx = {q: i for i, q in enumerate(used)}
+    k = max(1, len(used))
+    a = Circuit(k, [Gate(g.name, tuple(idx[q] for q in g.qubits), g.params) for g in original.gates])
+    b = Circuit(k, [Gate(g.name, tuple(idx[q] for q in g.qubits), g.params) for g in optimised.gates])
+    return equivalent(a, b)
 
 
 def greedy(circ: Circuit, mode: str = "cliffordt", hardware=None) -> Circuit:

@@ -15,7 +15,7 @@ from fractions import Fraction
 
 import numpy as np
 
-from ..circuit import GATE_SPECS, Circuit, Gate, _SX, controlled, norm_angle
+from ..circuit import GATE_SPECS, Circuit, Gate, _SX, controlled, gate_matrix, norm_angle
 
 # gates whose QASM name maps directly onto the IR
 _DIRECT = {
@@ -177,6 +177,8 @@ class _Parser:
         self.measured: set[int] = set()
         self.touched: set[int] = set()
         self.barriers = 0
+        self.native_ok: set[str] = set()
+        self.alias: dict[str, str] = {}
 
     # -------------------------------------------------------------- #
     def parse(self, text: str):
@@ -222,6 +224,58 @@ class _Parser:
         args = [a.strip() for a in args.split(",") if a.strip()]
         stmts = [s.strip() for s in body.split(";") if s.strip()]
         self.defs[name] = _GateDef(params, args, stmts)
+        self._maybe_native(name)
+
+    def _maybe_native(self, name: str):
+        """Use the IR primitive instead of inlining a user definition when the
+        definition is equivalent (e.g. IBM files define ``ecr`` via two
+        ``rzx``; inlining would cost 4 CNOTs instead of 1)."""
+        spec = GATE_SPECS.get(name)
+        d = self.defs[name]
+        if spec is None and not d.params and len(d.args) == 2:
+            # e.g. Qiskit exports ECR instances as `ecr_140451863465232`
+            self._maybe_alias(name)
+            return
+        if spec is None or spec[0] is None or spec[0] != len(d.args) or spec[1] != len(d.params):
+            return
+        try:
+            from ..sim import equal_up_to_phase, unitary
+            vals = [0.3 + 0.7 * i for i in range(len(d.params))]
+            sub = _Parser(self.base_dir)
+            sub.defs = {k: v for k, v in self.defs.items() if k != name}
+            sub.native_ok = set(self.native_ok)
+            sub.qregs = {"q": (0, len(d.args))}
+            sub.n_qubits = len(d.args)
+            for st in d.body:
+                sub._gate_call_inner(st, dict(zip(d.params, vals)), dict(zip(d.args, range(len(d.args)))))
+            got = unitary(Circuit(len(d.args), sub.gates))
+            want = gate_matrix(name, vals, len(d.args))
+            if equal_up_to_phase(got, want, 1e-9):
+                self.native_ok.add(name)
+        except Exception:
+            pass
+
+    def _def_unitary(self, name, vals):
+        from ..sim import unitary
+        d = self.defs[name]
+        sub = _Parser(self.base_dir)
+        sub.defs = {k: v for k, v in self.defs.items() if k != name}
+        sub.native_ok = set(self.native_ok)
+        sub.alias = dict(self.alias)
+        for st in d.body:
+            sub._gate_call_inner(st, dict(zip(d.params, vals)), dict(zip(d.args, range(len(d.args)))))
+        return unitary(Circuit(len(d.args), sub.gates))
+
+    def _maybe_alias(self, name):
+        try:
+            from ..sim import equal_up_to_phase
+            got = self._def_unitary(name, [])
+            for native in ("ecr", "cx", "cz", "swap"):
+                if equal_up_to_phase(got, gate_matrix(native, (), 2), 1e-9):
+                    self.alias[name] = native
+                    return
+        except Exception:
+            pass
 
     # -------------------------------------------------------------- #
     def _statement(self, st: str):
@@ -323,7 +377,10 @@ class _Parser:
             if q in self.measured:
                 raise QasmError("gate after measurement (mid-circuit measurement) is not supported")
             self.touched.add(q)
-        if name in self.defs:
+        if name in self.alias:
+            self.gates.append(Gate(self.alias[name], qs))
+            return
+        if name in self.defs and name not in self.native_ok:
             d = self.defs[name]
             if len(d.params) != len(params) or len(d.args) != len(qs):
                 raise QasmError(f"wrong arity calling {name}")
@@ -397,7 +454,13 @@ _CLIFFORD_T_NAMES = {1: "t", 2: "s", 3: None, 4: "z", -1: "tdg", -2: "sdg", -3: 
 
 
 def to_qasm(circ: Circuit, clifford_t_names: bool = True) -> str:
-    lines = ["OPENQASM 2.0;", 'include "qelib1.inc";', f"qreg q[{circ.n_qubits}];"]
+    lines = ["OPENQASM 2.0;", 'include "qelib1.inc";']
+    names = {g.name for g in circ.gates}
+    if names & {"rzx", "ecr"}:  # not in qelib1: emit the standard (Qiskit) definitions
+        lines.append("gate rzx(param0) q0,q1 { h q1; cx q0,q1; rz(param0) q1; cx q0,q1; h q1; }")
+    if "ecr" in names:
+        lines.append("gate ecr q0,q1 { rzx(pi/4) q0,q1; x q0; rzx(-pi/4) q0,q1; }")
+    lines.append(f"qreg q[{circ.n_qubits}];")
     meas = circ.meta.get("measure") or []
     n_cl = circ.meta.get("n_clbits", 0)
     if meas:

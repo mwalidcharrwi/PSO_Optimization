@@ -133,6 +133,11 @@ def _rzx(t):
     return np.cos(t / 2) * np.eye(4) - 1j * np.sin(t / 2) * np.kron(_Z, _X)
 
 
+def _ecr():
+    # IBM echoed cross-resonance gate: rzx(-pi/4) (X x I) rzx(pi/4)
+    return _rzx(-PI / 4) @ np.kron(_X, _I2) @ _rzx(PI / 4)
+
+
 def _cswap():
     m = np.eye(8, dtype=complex)
     m[4:, 4:] = _SWAP
@@ -179,6 +184,7 @@ GATE_SPECS: dict[str, tuple] = {
     "ryy": (2, 1, _ryy),
     "rzz": (2, 1, _rzz),
     "rzx": (2, 1, _rzx),
+    "ecr": (2, 0, _ecr),
     "ccx": (3, 0, lambda: controlled(_X, 2)),
     "ccz": (3, 0, lambda: controlled(_Z, 2)),
     "cswap": (3, 0, _cswap),
@@ -193,7 +199,7 @@ GATE_SPECS: dict[str, tuple] = {
 
 ONE_QUBIT_DIAGONAL = {"z", "s", "sdg", "t", "tdg", "rz", "p", "u1", "id"}
 DIAGONAL_GATES = ONE_QUBIT_DIAGONAL | {"cz", "crz", "cp", "cu1", "rzz", "ccz", "mcz"}
-SELF_INVERSE = {"x", "y", "z", "h", "cx", "cy", "cz", "swap", "ccx", "ccz", "cswap", "mcx", "mcz", "ch", "id"}
+SELF_INVERSE = {"x", "y", "z", "h", "cx", "cy", "cz", "swap", "ecr", "ccx", "ccz", "cswap", "mcx", "mcz", "ch", "id"}
 INVERSE_NAME = {"s": "sdg", "sdg": "s", "t": "tdg", "tdg": "t", "sx": "sxdg", "sxdg": "sx"}
 
 

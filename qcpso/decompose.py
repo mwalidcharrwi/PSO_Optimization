@@ -171,6 +171,8 @@ class Lowerer:
             return (2,)
         if n in ("cp", "cu1", "crz"):
             return (2, 2)
+        if n == "ecr":  # CNOT orientation x Clifford wrapper (see qcpso.native)
+            return (2, 8)
         return ()
 
     def lower(self, circ: Circuit, choice: ChoiceFn | None = None) -> Circuit:
@@ -248,6 +250,9 @@ class Lowerer:
         elif name == "swap":
             a, b = qs if v[0] == 0 else qs[::-1]
             sub = [Gate("cx", (a, b)), Gate("cx", (b, a)), Gate("cx", (a, b))]
+        elif name == "ecr":
+            from .native import ecr_lowering
+            sub = ecr_lowering(qs[0], qs[1], v[0], v[1])
         elif name == "dcx":
             sub = [Gate("cx", qs), Gate("cx", qs[::-1])]
         elif name == "cy":

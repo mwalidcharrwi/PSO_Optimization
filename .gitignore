@@ -4,3 +4,4 @@ __pycache__/
 results/*/convergence.json
 *.egg-info/
 logs/
+results/*/circuits/

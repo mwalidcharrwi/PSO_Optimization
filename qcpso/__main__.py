@@ -20,7 +20,7 @@ def _optimize(argv):
     ap = argparse.ArgumentParser(prog="qcpso optimize")
     ap.add_argument("input", help=".qasm / .qc / .real file")
     ap.add_argument("-o", "--output", help="write optimised OpenQASM 2.0 here")
-    ap.add_argument("--mode", default="cliffordt", choices=["cliffordt", "continuous", "hardware"])
+    ap.add_argument("--mode", default="cliffordt", choices=["cliffordt", "continuous", "hardware", "ibm"])
     ap.add_argument("--objective", default=None, choices=list(OBJECTIVES))
     ap.add_argument("--budget", type=int, default=1000, help="unique circuit evaluations")
     ap.add_argument("--time-limit", type=float, default=None, help="seconds")
