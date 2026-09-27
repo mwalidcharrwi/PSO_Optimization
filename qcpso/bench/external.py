@@ -89,6 +89,21 @@ def run_qiskit(circ: Circuit, mode: str = "cliffordt", seed: int = 0, level: int
                                           coupling_map=cmap,
                                           initial_layout=list(range(circ.n_qubits)) if edges else None,
                                           seed_transpiler=seed)
+        try:
+            out = _run_pm(pm, qc, allow_permutation)
+        except Exception:
+            # Qiskit sometimes creates an ECR in the non-native direction and cannot
+            # flip it; retry with an undirected map (a relaxation in Qiskit's favour)
+            both = sorted(set(edges) | {(b, a) for a, b in edges})
+            cmap2 = QCM(both)
+            for q in range(circ.n_qubits):
+                if q not in cmap2.physical_qubits:
+                    cmap2.add_physical_qubit(q)
+            pm = generate_preset_pass_manager(level, basis_gates=["rz", "sx", "x", "ecr"], coupling_map=cmap2,
+                                              initial_layout=list(range(circ.n_qubits)), seed_transpiler=seed)
+            out = _run_pm(pm, qc, allow_permutation)
+        dt = time.time() - t
+        return canonical(from_qiskit(out, n_qubits=circ.n_qubits), mode), dt
     else:
         basis = ["h", "x", "rz", "cx"] if mode == "cliffordt" else ["u", "cx"]
         pm = generate_preset_pass_manager(level, basis_gates=basis, seed_transpiler=seed)
@@ -102,6 +117,15 @@ def run_qiskit(circ: Circuit, mode: str = "cliffordt", seed: int = 0, level: int
     dt = time.time() - t
     res = from_qiskit(out, n_qubits=circ.n_qubits if mode == "ibm" else None)
     return canonical(res, mode), dt
+
+
+def _run_pm(pm, qc, allow_permutation):
+    from qiskit.transpiler import PassManager
+    from qiskit.transpiler.passes import ElidePermutations
+    if pm.init is not None and not allow_permutation:
+        tasks = [x for t_ in pm.init._tasks for x in (t_ if isinstance(t_, list) else [t_])]
+        pm.init = PassManager([x for x in tasks if not isinstance(x, ElidePermutations)])
+    return pm.run(qc)
 
 
 def from_qiskit(qc, n_qubits: int | None = None) -> Circuit:
