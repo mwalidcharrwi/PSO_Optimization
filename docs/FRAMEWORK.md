@@ -125,6 +125,10 @@ QPSO:  x ← φ p_i + (1−φ) l_i ± β |m − x| ln(1/u),        β: 1.0 → 0
 with χ = 0.7298, c1 = c2 = 1.49618, m the mean personal best and l_i the
 neighbourhood best.
 
+(In the logical modes with placement disabled, the default, every gene is
+categorical, so only the categorical rule below is active; the continuous
+rule drives the hardware layout keys and the optional placement genes.)
+
 *Categorical genes* (decomposition variants, pass slots, router settings)
 are **nominal**, so each particle holds a probability vector π over the k
 categories of each gene (categorical PSO):

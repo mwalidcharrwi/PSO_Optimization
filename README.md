@@ -28,11 +28,51 @@ the deterministic compiler, and a provenance-guided memetic local search.
 * Novel directions (implemented and open): [docs/RESEARCH_DIRECTIONS.md](docs/RESEARCH_DIRECTIONS.md)
 * Benchmark results: [results/](results/)
 
+## Results on the built-in suites
+
+These results come from the final code, with 3 seeds per search method.
+Every output of the main experiments is verified equivalent to its input by
+simulation.  Full tables, per-circuit numbers and the protocol are in
+[results/](results/).
+
+**Mean reduction vs. the lowered input, and average Friedman rank (lower is better)**
+
+| mode (primary metric) | HyPSO-QCO | SA* | GA* | standard PSO* | Qiskit O3 | TKET | PyZX |
+|---|---|---|---|---|---|---|---|
+| Clifford+T, 18 circuits (total gates) | **35.1 %**, rank **2.11** | 35.0 %, 2.11 | 34.7 %, 2.67 | 33.3 %, 3.67 | 9.2 %, 7.28 | −5.6 %, 8.14 | −13.9 %, 8.58 |
+| continuous {U3, CX}, 11 circuits (CNOTs) | **21.9 %**, rank **2.45** | 20.7 %, 3.00 | 21.1 %, 2.86 | 18.3 %, 4.36 | 2.2 %, 6.95 | 4.9 %, 5.86 | −48.4 %, 9.00 |
+| IBM Tokyo, 8 circuits (CNOTs incl. routing) | 7.6 % below greedy, rank **2.00** | rank 2.38 | rank **2.00** | rank 7.38 | rank 5.50 | rank 6.88 | – |
+
+\* same decoder, genome and evaluation budget as HyPSO-QCO (only the search strategy differs).
+
+* **Versus Qiskit O3, TKET and PyZX, HyPSO-QCO wins on every Clifford+T
+  circuit** (18/18 each; 28.8 %, 37.1 % and 41.8 % fewer gates on average;
+  one-sided Wilcoxon p ≤ 1e-4).  In continuous mode it wins or ties on all
+  circuits except QFT, where TKET saves 2 CNOTs.  On IBM Tokyo it uses 15.8 %
+  fewer CNOTs than Qiskit O3 (7/8 wins, p = 0.008) and 19.9 % fewer than TKET
+  (8/8, p = 0.004).
+* **Versus the prior PSO formulation** (canonical gbest PSO on the same
+  decoder): better on every circuit where they differ (p ≤ 0.004 in all
+  three modes).
+* **Versus GA and SA on the same decoder:** HyPSO-QCO has the best (or
+  tied-best) average rank in every mode.  It is significantly better than GA
+  in Clifford+T (p = 0.008) and continuous (p = 0.047) modes; the other
+  differences to GA/SA are not significant at 3 seeds.
+* T-counts match phase-folding optima (for example tof_10: 71, the value
+  reported by Nam et al.).
+
+**Ablation** ([results/ablation](results/ablation/summary.md), 6 Toffoli-heavy circuits):
+removing decomposition-variant genes costs 20.9 % more gates (p = 0.016).
+Replacing categorical PSO by a continuous relaxation costs 2.0 % (p = 0.016).
+Enabling free rotation placement costs 1.6 % (p = 0.016), so it is opt-in.
+Seeding, memetic search, pass-schedule genes, guidance and topology are
+neutral at this budget (< 1 %, not significant).
+
 ## Installation
 
 ```bash
 pip install -r requirements.txt     # numpy, scipy (+ optional qiskit, pytket, pyzx, pytest)
-python -m pytest -q tests           # 100 tests: lowering, pass soundness, I/O, routing, framework
+python -m pytest -q tests           # 101 tests: lowering, pass soundness, I/O, routing, framework
 ```
 
 ## Quick start
