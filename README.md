@@ -61,6 +61,27 @@ Modes: `cliffordt` ({H, X, Rz, CNOT}; T-count reported), `continuous`
 `ibm_falcon27`, `line_N`, `ring_N`, `grid_RxC`, `full_N`).  Objectives:
 `gates`, `cx`, `t`, `depth`, `fidelity`.
 
+## Evaluating on your own benchmark circuits
+
+Put the circuits (`.qasm`, `.qc` or `.real`; sub-folders are fine) into one
+directory and run:
+
+```bash
+# Clifford+T gate set, total gate count (then CNOT, T, depth)
+python -m qcpso bench --suite path/to/benchmarks --mode cliffordt --seeds 5 --budget 1000 --out results/bench_ct
+# NISQ gate set {U3, CX}, CNOT count first
+python -m qcpso bench --suite path/to/benchmarks --mode continuous --seeds 5 --budget 500 --out results/bench_cont
+# device-constrained compilation
+python -m qcpso bench --suite path/to/benchmarks --mode hardware --device ibm_tokyo --seeds 5 --budget 300 \
+    --methods greedy,hypso,spso,ga,sa,rs,qiskit,tket --out results/bench_hw
+```
+
+Useful flags: `--objective {gates,cx,t,depth,fidelity}`, `--workers N`
+(parallel evaluation), `--methods` (any subset of the baselines and
+ablations below), `--no-verify` (skip simulation for very large circuits).
+Terminal measurements are kept, barriers are dropped, and circuits with
+mid-circuit measurement or classical control are rejected with an error.
+
 ## Baselines included
 
 | baseline | what it is |

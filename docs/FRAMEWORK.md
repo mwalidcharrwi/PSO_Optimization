@@ -142,14 +142,27 @@ category.
 * **Opposition-based initialisation** for half of the random particles.
 * **Adaptive turbulence** that doubles with stagnation; **partial restarts**
   of the worst half after `patience` stagnant iterations.
+* **Two-timescale genome** — placement genes are *lazy*: every particle
+  starts with the standard placement, and these genes are neither randomised
+  nor mutated by turbulence.  They change only when the local search finds
+  a useful relocation, which then spreads through the swarm socially.  This
+  keeps hundreds of fine-grained continuous genes from diluting the global
+  search, which the ablation showed to happen with eager placement genes.
 * **Provenance-guided memetic search** on the global best every iteration.
   The best circuit is decoded, and for every site the fraction of its gates
   that survived optimisation is computed from the provenance tags.  Moves
   are sampled proportionally to this *residual*: single-factor changes,
   whole-site resampling, and joint moves of two **adjacent sites** (sites
   acting on a common qubit), which capture the pairwise interactions that
-  dominate cancellation between neighbouring gates.  Layout genes use swap
-  moves.
+  dominate cancellation between neighbouring gates.  Lazy genes use
+  relocate/restore moves, and layout genes use "move a logical qubit to a
+  neighbouring physical qubit" moves.
+* **Adaptive operator selection** — the move types (layout, lazy, site,
+  whole-site, adjacent pair, generic) are chosen by probability matching
+  (Thierens 2005).  Each type's decayed reward is 1 for a strict improvement
+  and 0.1 for a neutral move, with a 5% floor per type.  The search thus
+  learns, per circuit, which neighbourhoods pay off; for example, placement
+  moves help GF(2^n) multipliers but not Barenco ladders.
 * **Memoisation** — phenotypes (decoded decisions) are cached; the budget is
   counted in *unique* evaluations.  Parallel evaluation uses a process pool.
 
@@ -181,8 +194,8 @@ logical qubit i ↦ the i-th physical qubit).  Router look-ahead size,
 look-ahead weight, decay and tie-breaking are genes as well.  SWAPs are
 oriented so that one of their CNOTs cancels an adjacent CNOT, then all
 (connectivity-preserving) passes and 2-qubit resynthesis run on the
-physical circuit.  The seed particle uses the SabreLayout (bidirectional)
-layout.  Because nearest-neighbour Toffoli networks are in the variant
+physical circuit.  The three best distinct SabreLayout (bidirectional, 20 trials) layouts
+are used as elite seeds.  Because nearest-neighbour Toffoli networks are in the variant
 library, the swarm can pick, per Toffoli, a network matching the layout it
 is co-evolving.  Results are verified with initial/final layouts and
 |0⟩ ancillas (`hardware/verify.py`).
@@ -215,6 +228,7 @@ python -m qcpso bench --suite path/to/benchmarks --mode cliffordt --seeds 5 --bu
 ```
 
 Ablation switches (runner method names): `hypso_novar`, `hypso_noplace`,
-`hypso_nosched`, `hypso_nomemetic`, `hypso_unguided`, `hypso_relaxed`
+`hypso_nosched`, `hypso_nomemetic`, `hypso_unguided`, `hypso_eager` (placement genes not lazy),
+`hypso_ls4` (smaller local search), `hypso_relaxed`
 (continuous relaxation instead of categorical PSO), `hypso_spso`,
 `hypso_qpso`, `hypso_gbest`, `hypso_noseed`.

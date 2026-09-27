@@ -19,7 +19,9 @@ item states the hypothesis and how to evaluate it with `qcpso.bench.run`.
 | A7 | **Provenance-guided memetic search** (credit assignment from surviving gates, adjacent-site moves) | Concentrating moves on poorly optimised regions speeds up convergence | `hypso_unguided`, `hypso_nomemetic` |
 | A8 | **Elitist seeding with the deterministic compiler** | Guarantees the result is never worse than greedy, so the swarm is a safe drop-in | `hypso_noseed` |
 | A9 | **Hardware co-optimisation** (random-key layout + router hyper-parameters + nearest-neighbour Toffoli networks in one swarm) | Decomposition and layout interact; optimising them jointly lowers SWAP overhead | `--mode hardware` vs Qiskit/TKET and greedy SABRE |
-| A10 | **Swarm instantiation** for 2-qubit block resynthesis (inner PSO + Levenberg–Marquardt) | A global swarm stage avoids local minima of pure gradient instantiation | `passes/kak.py` |
+| A10 | **Swarm instantiation** for 2-qubit block resynthesis (inner PSO + Levenberg–Marquardt with exact Jacobian) | A global swarm stage avoids local minima of pure gradient instantiation | `passes/kak.py` |
+| A11 | **Two-timescale genome** (lazy placement genes refined only by local search) | Fine-grained genes should refine, not define, solutions | `hypso_eager` |
+| A12 | **Adaptive operator selection** in the memetic search (probability matching) | Which neighbourhood pays off is circuit-family dependent | compare fixed move mix (git history) |
 
 ## B. Open directions (the next papers)
 
