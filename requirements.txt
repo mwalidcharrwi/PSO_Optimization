@@ -1,0 +1,7 @@
+numpy>=1.24
+scipy>=1.10
+# optional: external baselines and QASM 3 input
+qiskit>=1.0
+pytket>=1.30
+pyzx>=0.8
+pytest>=7
