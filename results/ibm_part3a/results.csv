@@ -1,0 +1,3 @@
+circuit,n_qubits,method,seed,gates,cx,twoq,oneq,t,h,depth,twoq_depth,time,evals,verified
+heisenberg_32,127,greedy,0,14855,0,3882,10973,0,0,2457,861,31.007,0,
+heisenberg_32,127,hypso,0,14740,0,3882,10858,0,0,2422,861,1320.118,46,
