@@ -172,18 +172,28 @@ def main(argv=None):
         others = [m for m in methods if m != "hypso"]
         for metric in ("ecr", "gates"):
             out += head_to_head(agg, circuits, "hypso", others, metric)
+    devs = defaultdict(list)
+    vpath = os.path.join(root, "verification.csv")
+    if os.path.exists(vpath):
+        with open(vpath) as fh:
+            for r in csv.DictReader(fh):
+                devs[(r["circuit"], r["method"])].append((float(r["deviation"]), r["check"]))
     out += ["### Runtime (s) and verification", "",
-            "| circuit | method | seeds | mean time (s) | equivalence | coupling |", "|---|---|---:|---:|---|---|"]
+            "Deviation: random-state (<= 20 qubits) or Choi-MPS (> 20 qubits) distance to the input, maximum over "
+            "seeds; < 1e-9 exact, < 1e-6 numerically exact, otherwise approximate.", "",
+            "| circuit | method | seeds | mean time (s) | max deviation | check | coupling / ECR directions |",
+            "|---|---|---:|---:|---:|---|---|"]
     for c in circuits:
         for m in methods:
             if (c, m) in agg:
                 t = agg[(c, m)].get("time")
                 v = ver.get((c, m), set())
-                eq = ", ".join(sorted(x for x in v if x != "COUPLING VIOLATED")) or "–"
                 cp = "VIOLATED" if "COUPLING VIOLATED" in v else "ok"
-                out.append(f"| {c} | {LABEL.get(m, m)} | {len(agg[(c, m)]['_n'])} | "
-                           f"{np.mean(t):.0f} | {eq} | {cp} |" if t else
-                           f"| {c} | {LABEL.get(m, m)} | {len(agg[(c, m)]['_n'])} | – | {eq} | {cp} |")
+                dv = devs.get((c, m))
+                dev = f"{max(d for d, _ in dv):.1e}" if dv else "–"
+                chk = dv[0][1] if dv else "–"
+                ts = f"{np.mean(t):.0f}" if t else "–"
+                out.append(f"| {c} | {LABEL.get(m, m)} | {len(agg[(c, m)]['_n'])} | {ts} | {dev} | {chk} | {cp} |")
     print("\n".join(out))
 
 

@@ -21,6 +21,10 @@ possible, so treat them as "not found in the reviewed work".
 | C6 | Hardware co-optimisation: random-key layout, router hyper-parameters and nearest-neighbour Toffoli networks in one swarm | Implemented; beats Qiskit/TKET, statistically tied with GA/SA |
 | C7 | IBM-native re-synthesis: greedy choice among the 64 exact Clifford wrappings of each CNOT→ECR conversion, plus minimal {rz, sx, x} runs | Implemented; **deterministic, not PSO**; responsible for most of the gate reduction on the supplied benchmarks |
 | C8 | Verification tooling: exact Choi-state MPS "alternating miter" for 30+ qubit circuits.  This is an MPS realisation of alternating equivalence checking, not a new idea in itself | Implemented; verified the two 31–32-qubit outputs where QCEC did not finish |
+| C9 (v2) | **Memetic, connectivity-preserving block resynthesis for already-mapped circuits**: CNOT deletion inside each block's own CNOT skeleton, so no new qubit interaction can appear.  It adds Schmidt-rank lower bounds, a generic refit of long 3-qubit blocks, pair deletion, DAG-contraction re-insertion (correct for any convex block), and anytime adaptive selection among 12 partition strategies (3–5-qubit blocks).  Gate deletion by re-instantiation itself is BQSKit's idea (scanning gate removal); partition-and-resynthesise is BQSKit's and GUOQ's | Implemented; **by far the largest effect in v2** |
+| C10 (v2) | **Z-slot sparsification**: U3 slots of resynthesised blocks are re-instantiated as Rz where possible (virtual on IBM hardware) | Implemented; −28 % physical single-qubit gates on `mult_8` |
+| C11 (v2) | **Swarm–memetic coupling**: distinct swarm elites as starting points of the memetic phase, and PSO-seeded restarts for hard deletions | Implemented; effect measured by the no-swarm ablation (see §2.3) |
+| C12 (v2) | Lowering-mode gene (per-ECR variants vs greedy exact ECR→CX conversion), and TKET's connectivity-preserving passes as an exact entry of the pass library (applied only before numerical synthesis, chunked for large circuits) | Implemented; the TKET pass is TKET's contribution, not ours |
 
 ## 2. Where the improvements come from
 
