@@ -185,6 +185,36 @@ def _lm(tpl, u, z, tol, max_iter):
     return z, cost < tol2
 
 
+def swarm_starts(tpl: Template, u: np.ndarray, rng, k: int = 2, swarm: int = 16, iters: int = 20,
+                 anchor: np.ndarray | None = None) -> list[np.ndarray]:
+    """Constriction-PSO over the template parameters (fitness: Hilbert-Schmidt
+    infidelity 1 - |tr(U^+ V)|/d); the k best personal bests seed
+    Levenberg-Marquardt.  With ``anchor`` (the warm start), half of the
+    swarm is initialised around it."""
+    d = u.shape[0]
+    D = tpl.n_params
+
+    def fit(x):
+        return 1.0 - abs(np.vdot(u, tpl.unitary(x))) / d
+
+    pos = rng.uniform(0, 2 * math.pi, (swarm, D))
+    if anchor is not None:
+        h = swarm // 2
+        pos[:h] = anchor + rng.normal(scale=0.3, size=(h, D))
+    vel = rng.normal(scale=0.3, size=(swarm, D))
+    f = np.array([fit(x) for x in pos])
+    pb, pf = pos.copy(), f.copy()
+    for _ in range(iters):
+        g = pb[np.argmin(pf)]
+        r1, r2 = rng.random((swarm, D)), rng.random((swarm, D))
+        vel = 0.7298 * (vel + 1.49618 * r1 * (pb - pos) + 1.49618 * r2 * (g - pos))
+        pos = pos + vel
+        f = np.array([fit(x) for x in pos])
+        better = f < pf
+        pb[better], pf[better] = pos[better], f[better]
+    return [pb[i] for i in np.argsort(pf)[:k]]
+
+
 def instantiate(tpl: Template, u: np.ndarray, starts: list[np.ndarray], tol: float = 1e-10,
                 max_iter: int = 150):
     """Return parameters realising ``u`` (up to phase) or None."""
@@ -431,8 +461,11 @@ def delete_cnots(u, n, cxs, x_init, rng, tol=1e-10, restarts=0, deadline=None, s
             tpl = Template(n, cand)
             s0 = 3 * (n + 2 * j)
             x0 = np.concatenate([x[:s0], x[s0 + 6:]])
-            starts = [x0] + [rng.uniform(0, 2 * math.pi, tpl.n_params) for _ in range(restarts)]
-            xn = instantiate(tpl, u, starts, tol=tol)
+            xn = instantiate(tpl, u, [x0], tol=tol)
+            if xn is None and restarts > 0:
+                more = (swarm_starts(tpl, u, rng, k=restarts, anchor=x0) if SWARM_RESTARTS else
+                        [rng.uniform(0, 2 * math.pi, tpl.n_params) for _ in range(restarts)])
+                xn = instantiate(tpl, u, more, tol=tol)
             if xn is not None:
                 cur, x, removed = cand, xn, True
         if not removed:
@@ -470,6 +503,8 @@ def _delete_pairs(u, n, cur, x, rng, tol, restarts, deadline, lb):
             j += 1
     return cur, x
 
+
+SWARM_RESTARTS = True  # deep mode: PSO-seeded restarts instead of uniform random ones
 
 # generic templates for long blocks: a generic 3-qubit unitary needs at least
 # 14 CNOTs, and alternating CNOTs on the two coupled pairs of a line reach it

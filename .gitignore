@@ -5,3 +5,6 @@ __pycache__/
 logs/
 results/**/convergence.json
 results/**/circuits/
+
+results/ibm_literature/**/work/
+results/ibm_literature/logs/

@@ -137,3 +137,34 @@ when the decoded structure changes; and (iv) optimise one stage (synthesis
 | G6 | Decomposition, layout and routing optimised in isolation | **Hardware co-optimisation** of Toffoli networks (incl. nearest-neighbour variants), random-key layout and router hyper-parameters in one swarm |
 | G7 | Fixed placement of merged phases | **Free rotation placement** proven sound through the path-sum argument |
 | G8 | Numerical resynthesis gets stuck in local minima | **Swarm instantiation** (PSO + Levenberg–Marquardt) for block resynthesis |
+| G9 | Superoptimisers (GUOQ, QUESO, Quartz, BQSKit) mostly target logical circuits; for already-mapped circuits their synthesis ignores the device connectivity | **Connectivity-preserving memetic resynthesis** (v2): CNOT deletion inside the block's own skeleton, so no new qubit interaction can appear; swarm elites as diverse starting points (see §7) |
+
+## 7. Head-to-head comparison on the supplied benchmarks
+
+The supplied circuits (`test_circuits_new`) are 127-qubit, IBM-Eagle-mapped
+circuits in {rz, sx, x, ecr}.  None of them appears in the published
+evaluation suites of the tools below.  Those suites contain logical circuits
+(for example GUOQ's 250-circuit suite includes `qft_16` only as a logical
+circuit), so published numbers cannot be compared.  We therefore ran the
+tools ourselves on the exact files, under one contract:
+
+* the output must be equivalent on the same physical qubits;
+* two-qubit gates may only act on pairs already coupled in the input;
+* the output uses native {rz, sx, x, ecr} with native ECR directions.
+
+Driver: `qcpso/bench/compare_ibm.py`; tool wrappers:
+`qcpso/bench/literature.py`.
+
+| Tool | Configuration used |
+|---|---|
+| Qiskit 2.x O3 | `generate_preset_pass_manager(3)`, basis {rz, sx, x, ecr}, directed coupling map = the input's ECR directions, trivial layout (undirected map as fallback) |
+| TKET (pytket 2.x) | Connectivity-preserving fixed point of `SynthesiseTket`, `KAKDecomposition(allow_swaps=False)` and `CliffordSimp(allow_swaps=False)`.  `FullPeepholeOptimise` is not used: its 3-qubit resynthesis can couple uncoupled qubits |
+| QUESO (PLDI'23) | GUOQ binary with the authors' QUESO flags (`-opt TOTAL -search BEAM -temp 0 -q 8000 -resynth NONE`) + `--preserve-mapping` |
+| GUOQ (ASPLOS'25) | IBM-Eagle gate set, `-opt TWO_Q` (2q count, then total), BQSKit resynthesis, `--preserve-mapping`.  Resynthesis made coupling-aware with a small patch (`third_party/`) |
+| BQSKit O3 | `compile(optimization_level=3)` with a `MachineModel` whose coupling graph is the input's coupled pairs |
+
+CX-based tools receive the input converted exactly to {rz, sx, x, cx}
+(`native.to_cx`).  Their outputs are converted back with the same exact
+native lowering that HyPSO-QCO uses, so ECR counts equal their CX counts.
+Anytime tools get the same wall-clock budget on the same 4-core machine.
+Results and discussion: `results/ibm_literature/REPORT.md`.

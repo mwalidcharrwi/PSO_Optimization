@@ -81,6 +81,7 @@ HYPSO_VARIANTS = {
     "hypso_noswarm": dict(resynth_share=1.0, elites=1),           # memetic phase from the elite seed only
     "hypso_noresynth": dict(resynth=False),                       # swarm phase only (v1 + TKET pass)
     "hypso_nosparse": dict(resynth_sparse=False),                 # no Z-slot sparsification
+    "hypso_w1": dict(resynth_workers=1),                          # compute-matched: one resynthesis worker
 }
 
 

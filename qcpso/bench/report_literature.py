@@ -18,11 +18,12 @@ from collections import defaultdict
 import numpy as np
 
 ORDER = ["qiskit", "tket_mp", "bqskit", "queso", "guoq@60", "guoq@300", "guoq", "hypso_v1", "hypso_noswarm",
-         "hypso_nosparse", "hypso"]
+         "hypso_nosparse", "hypso_w1", "hypso"]
 LABEL = {
     "qiskit": "Qiskit O3", "tket_mp": "TKET (conn.-preserving)", "bqskit": "BQSKit O3", "queso": "QUESO (15 min)",
     "guoq@60": "GUOQ 1 min", "guoq@300": "GUOQ 5 min", "guoq": "GUOQ 15 min", "hypso_v1": "HyPSO-QCO v1",
-    "hypso_noswarm": "v2 w/o swarm", "hypso_nosparse": "v2 w/o sparsify", "hypso": "**HyPSO-QCO v2 (15 min)**",
+    "hypso_noswarm": "v2 w/o swarm", "hypso_nosparse": "v2 w/o sparsify", "hypso_w1": "v2, 1 worker",
+    "hypso": "**HyPSO-QCO v2 (15 min)**",
 }
 INPUT_ORDER = ["mult_8", "heisenberg_8", "add_17", "qae_17", "qft_16", "hubbard_8", "hhl_8", "heisenberg_32",
                "grover_10", "hubbard_18"]

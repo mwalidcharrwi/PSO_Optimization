@@ -236,6 +236,99 @@ every ECR acts on a coupled pair, in the device's native direction.  The
    used qubits by simulation (≤ 20 qubits) or with MQT QCEC
    (`qcpso/bench/qcec_verify.py`) for larger circuits.
 
+## 7b. HyPSO-QCO v2: swarm + memetic, connectivity-preserving resynthesis (ibm mode)
+
+The comparison with related work on the supplied circuits
+(`results/ibm_literature`) showed that the v1 pipeline removed few ECRs.
+TKET's Clifford rewrite rules and GUOQ's resynthesis removed far more.
+v2 keeps the swarm over compilation decisions and adds a **memetic phase**:
+connectivity-preserving numerical resynthesis, applied to the swarm's elites
+and tuned for anytime use under a wall-clock budget *T*.
+
+**Phase 1 — swarm (25 % of *T*).**
+* Genome: ECR lowering variants (§7), plus a *lowering-mode* gene (per-ECR
+  variants, or the exact greedy ECR→CX conversion `native.to_cx`), plus pass
+  schedule genes.
+* The pass library now also contains `tket`: the fixed point of TKET's
+  `SynthesiseTket`, `KAKDecomposition` and `CliffordSimp`, all with
+  `allow_swaps=False` (`passes/tket_bridge.py`).
+  * These passes never create a new qubit interaction.
+  * TKET snaps near-special angles (about 1e-8 per pass), so the decoder
+    applies `tket` only to exact circuits, before any numerically
+    synthesised block.
+  * Circuits above 12,000 gates are processed in 6,000-gate chunks (no
+    measurable loss; 3–10× faster).
+* Three elite seeds: the greedy schedule; greedy ECR→CX conversion + TKET +
+  greedy schedule; variant lowering + TKET + greedy schedule.
+* Evaluation batches respect the phase deadline.
+* In time-limited runs on circuits with more than 50,000 gates, one decode
+  takes minutes, so the swarm phase is skipped and the strongest seed starts
+  phase 2.
+
+**Phase 2 — memetic resynthesis (remaining time, `memetic.py`,
+`passes/resynth.py`).**  Each *round*:
+
+1. **Partition** the current {1q, CX} circuit into convex blocks of at most
+   *k* qubits (*k* = 3, 4 or 5).  A greedy scan keeps every qubit "open" in
+   at most one block and merges open blocks only while the union fits.
+   * Variations expose different blocks in later rounds: forward or
+     reverse scan, random forced cuts, and block size.
+   * Blocks are re-inserted by contracting the DAG and topologically
+     re-linearising it.  This is correct for either scan direction, and a
+     non-convex block would show up as a cycle.
+2. **Resynthesise each block by CNOT deletion.**
+   * Template: V(x) = L_m…L_1 L_0, where L_0 is a layer of U3 gates and each
+     L_j is (U3⊗U3)·CX_j over the block's own CNOT skeleton.  Only existing
+     CNOTs are ever deleted, so the device mapping is preserved by
+     construction.
+   * The exact initial parameters come from folding every single-qubit run
+     into the U3 slot after the preceding CNOT on its qubit.
+   * Deletion is tried CNOT by CNOT in two sweeps (backward, then forward),
+     keeping every success.  After each deletion the parameters are
+     re-instantiated by Levenberg–Marquardt with an analytic, vectorised
+     Jacobian.
+   * The solver starts from the previous solution (the "warm start").  It
+     aborts on stagnation: successful runs converge in about 11 iterations
+     (median), and failures stall.
+   * A deletion is accepted if ‖V(x) − e^{iφ}U‖_F < 1e-10.
+   * Deletions that would violate a lower bound are skipped.  The bound:
+     one CNOT at most doubles the operator Schmidt rank across a
+     single-qubit cut.
+   * *Long 3-qubit blocks* (more than 20 CNOTs) are first refitted to a
+     generic alternating 20-CNOT template on the block's two coupled pairs.
+     This took `hhl_8` from 2,377 to 507 CNOTs in 36 s instead of 860 s.
+   * *Deep* strategy: two random restarts per deletion, plus deletion of
+     CNOT pairs on the same qubit pair (an odd number of CNOTs across a cut
+     can never be non-entangling).
+3. **Z-slot sparsification.**  Each U3 slot of a resynthesised block is
+   tentatively restricted to an Rz and the rest re-instantiated from the
+   warm start.  Rz is virtual on IBM hardware.  On `mult_8` this removed
+   28 % of the physical single-qubit gates.
+4. **Exact clean-up passes**, then accept the round if the CNOT count did
+   not increase.
+
+Other features of phase 2:
+* Block results are memoised by the block's gate list, so repeated
+  partitions are cheap.  Blocks are processed largest first in a process
+  pool.
+* The next strategy is chosen by adaptive operator selection: probability
+  matching on CNOTs saved per second, over the 12 (direction, cuts, size,
+  restarts) strategies.
+* The phase first refines up to three distinct swarm elites, each until it
+  stalls (every strategy has failed twice in a row).  It then *deepens* the
+  best circuit with blocks of up to 5 qubits until *T* expires.
+* The swarm's diversity therefore pays off here: different starting
+  representations lead to different local optima (for example `mult_8`:
+  173 CNOTs from one seed, 161 from the swarm's elite).
+
+**Soundness.**
+* Phase 1 is exact.
+* Phase 2 is numerically exact per block (Frobenius residual < 1e-10).
+* The contraction-based rebuild makes block replacement correct by
+  construction.
+* Every output is re-verified independently: statevector simulation for
+  ≤ 20 used qubits, and the Choi-state MPS miter for larger circuits.
+
 ## 8. Complexity
 
 One evaluation = lowering + a constant number of linear-time passes (the
