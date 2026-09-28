@@ -1,0 +1,75 @@
+diff --git a/resynth.py b/resynth.py
+index 0307f00..c1e70c8 100644
+--- a/resynth.py
++++ b/resynth.py
+@@ -194,6 +194,8 @@ def main_analysis(circuit_folder):
+ # end code from https://github.com/eth-sri/synthetiq/blob/main/notebooks/post_processing/analyzer.py
+ 
+ warnings.filterwarnings("ignore")
++PORT = 8080
++PRESERVE_COUPLING = False
+ 
+ GATE_SET_DICT = {
+     "ibm_new": ["cx", "rz", "sx", "x"],
+@@ -212,6 +214,26 @@ def bqskit_io(compiler, data, circuit_str, opt_level, epsilon, target_gateset):
+         if target_gateset == "ion"
+         else None
+     )
++    if PRESERVE_COUPLING and target_gateset != "ion":
++        # connectivity-aware resynthesis: only the qubit pairs already coupled
++        # in the block may carry two-qubit gates (keeps the device mapping)
++        edges = set()
++        for ins in qc.data:
++            if len(ins.qubits) == 2:
++                a, b = (qc.find_bit(q).index for q in ins.qubits)
++                edges.add((min(a, b), max(a, b)))
++        adj = {q: set() for q in range(qc.num_qubits)}
++        for a, b in edges:
++            adj[a].add(b)
++            adj[b].add(a)
++        seen, stack = {0}, [0]
++        while stack:
++            for w in adj[stack.pop()] - seen:
++                seen.add(w)
++                stack.append(w)
++        if len(seen) < qc.num_qubits:
++            return circuit_str  # disconnected block: leave unchanged
++        model = MachineModel(qc.num_qubits, coupling_graph=sorted(edges))
+     circuit = compile(
+         qiskit_to_bqskit(qc).get_unitary(),
+         optimization_level=opt_level,
+@@ -393,7 +415,7 @@ def start_server(bqskit, bqskit_auto_workers, verbose=False, path_to_synthetiq=N
+     )
+     try:
+         socketserver.TCPServer.allow_reuse_address = True
+-        httpd = socketserver.TCPServer(("", 8080), partial_handler)
++        httpd = socketserver.TCPServer(("", PORT), partial_handler)
+         httpd.serve_forever()
+     except KeyboardInterrupt:
+         httpd.shutdown()
+@@ -422,7 +444,11 @@ if __name__ == "__main__":
+         default=os.path.join(LIB_DIR, "synthetiq", "bin", "main"),
+     )
+ 
++    parser.add_argument("--port", type=int, default=8080)
++    parser.add_argument("--preserve_coupling", action=argparse.BooleanOptionalAction, default=False)
+     args = parser.parse_args()
++    PORT = args.port
++    PRESERVE_COUPLING = args.preserve_coupling
+ 
+     start_server(
+         args.bqskit,
+diff --git a/src/main/java/qoptimizer/Bqskit.java b/src/main/java/qoptimizer/Bqskit.java
+index 6f8110a..6014279 100644
+--- a/src/main/java/qoptimizer/Bqskit.java
++++ b/src/main/java/qoptimizer/Bqskit.java
+@@ -21,7 +21,8 @@ public class Bqskit {
+     public static String socket(String circuit, int optLevel, double epsilon, String targetGateset) {
+         try {
+             // Specify the URL along with the query parameters
+-            String urlString = "http://localhost:8080/bqskit";
++            String port = System.getenv().getOrDefault("GUOQ_RESYNTH_PORT", "8080");
++            String urlString = "http://localhost:" + port + "/bqskit";
+ 
+             Gson gson = new GsonBuilder().create();
+             HashMap<String, String> log = new HashMap<>();

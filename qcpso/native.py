@@ -319,5 +319,62 @@ def to_native(circ: Circuit, native: set) -> Circuit:
     return cancel(res)
 
 
+def to_cx(circ: Circuit) -> Circuit:
+    """{rz, sx, x, ecr} -> {rz, sx, x, cx} (the IBM-Eagle CX form used by
+    GUOQ/QUESO and by synthesis tools).
+
+    Every ECR becomes one CNOT (either orientation) wrapped in single-qubit
+    Cliffords; the wrapping is chosen, as in :func:`to_native`, to minimise
+    the native cost of the pending single-qubit runs.  Existing CNOTs are
+    kept.  Exact (no approximation).
+    """
+    n = circ.n_qubits
+    out: list[Gate] = []
+    pend = [np.eye(2, dtype=complex) for _ in range(n)]
+
+    def flush(q):
+        out.extend(zsx_gates(pend[q], q))
+        pend[q] = np.eye(2, dtype=complex)
+
+    for g in circ.gates:
+        if len(g.qubits) == 1:
+            q = g.qubits[0]
+            pend[q] = g.matrix() @ pend[q]
+        elif g.name == "cx":
+            for q in g.qubits:
+                flush(q)
+            out.append(g)
+        elif g.name == "ecr":
+            a, b = g.qubits
+            best = None
+            # CX(c,t) = (post_c x post_t) E (pre_c x pre_t)  =>
+            # E = (post_c^+ x post_t^+) CX(c,t) (pre_c^+ x pre_t^+)
+            for rev in (False, True):
+                c, t = (a, b) if not rev else (b, a)
+                cands, pc_list, pt_list, pc_idx, pt_idx = _candidate_tables(rev)
+                cc = [zsx_cost(m.conj().T @ pend[c]) for m in pc_list]
+                ct = [zsx_cost(m.conj().T @ pend[t]) for m in pt_list]
+                for i in range(len(cands)):
+                    cost = cc[pc_idx[i]] + ct[pt_idx[i]]
+                    if best is None or cost < best[0]:
+                        best = (cost, c, t, cands[i])
+            _, c, t, (pre_c, pre_t, post_c, post_t, _w) = best
+            out.extend(zsx_gates(pre_c.conj().T @ pend[c], c))
+            out.extend(zsx_gates(pre_t.conj().T @ pend[t], t))
+            out.append(Gate("cx", (c, t), (), g.tag))
+            pend[c], pend[t] = post_c.conj().T, post_t.conj().T
+        else:
+            raise ValueError(f"to_cx: unexpected gate {g.name}")
+    for q in range(n):
+        flush(q)
+    return Circuit(n, out, circ.name, circ.meta)
+
+
+def respects_coupling(circ: Circuit, native: set) -> bool:
+    """True iff every two-qubit gate acts on a pair coupled in ``native``."""
+    pairs = {frozenset(e) for e in native}
+    return all(frozenset(g.qubits) in pairs for g in circ.gates if len(g.qubits) == 2)
+
+
 __all__ = ["ECR_MATRIX", "ecr_decompositions", "ecr_lowering", "cx_to_ecr", "zsx_gates", "to_native",
-           "native_directions", "cx_ecr_candidates"]
+           "native_directions", "cx_ecr_candidates", "to_cx", "respects_coupling"]
