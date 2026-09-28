@@ -55,8 +55,8 @@ def _verify(orig: Circuit, out: Circuit):
 
 def _row(orig, name, method, seed, budget, dt, out, note=""):
     m = native_metrics(out)
-    ok = respects_coupling(out, native_directions(orig)) and all(
-        g.qubits in native_directions(orig) for g in out.gates if g.name == "ecr")
+    native = native_directions(orig)
+    ok = respects_coupling(out, native) and all(g.qubits in native for g in out.gates if g.name == "ecr")
     return dict(circuit=name, used_qubits=len(orig.used_qubits()), method=method, seed=seed, budget=budget,
                 time=round(dt, 1), coupling_ok=ok, verified=_verify(orig, out), note=note, **m)
 
@@ -102,6 +102,8 @@ def main(argv=None):
     ap.add_argument("--seed0", type=int, default=0)
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--port", type=int, default=8090)
+    ap.add_argument("--from-snapshots", action="store_true",
+                    help="GUOQ/QUESO: rebuild rows from saved snapshot files instead of running the tool")
     args = ap.parse_args(argv)
     os.makedirs(os.path.join(args.out, "optimized"), exist_ok=True)
     paths = sorted(glob.glob(os.path.join(args.suite, "*.qasm")))
@@ -129,7 +131,9 @@ def main(argv=None):
                         from . import literature as L
                         wd = os.path.join(args.out, "work", f"{name}_{method}_s{seed}")
                         t = time.time()
-                        if method == "guoq":
+                        if args.from_snapshots:  # post-process saved snapshots only (no new run)
+                            res = L.load_snapshots(orig, wd, snaps + [args.time_limit])
+                        elif method == "guoq":
                             os.makedirs(os.path.dirname(wd), exist_ok=True)
                             with L.ResynthServer(args.port, True, log=wd + "_server.log"):
                                 res = L.run_guoq(orig, wd, args.time_limit, snaps, "guoq", args.port, seed)

@@ -180,6 +180,19 @@ def run_guoq(circ: Circuit, workdir: str, time_limit: float = 3600.0, snapshots=
     return res
 
 
+def load_snapshots(circ: Circuit, workdir: str, times) -> dict:
+    """Rebuild :func:`run_guoq` results from the snapshot files of a finished run."""
+    small, used = compact(to_cx(circ))
+    res = {}
+    for t in times:
+        path = os.path.join(os.path.abspath(workdir), f"snap_{int(t)}.qasm")
+        out = parse_qasm(open(path).read())
+        if out.n_qubits < small.n_qubits:
+            out = Circuit(small.n_qubits, out.gates)
+        res[float(t)] = back_to_native(out, used, circ)
+    return res
+
+
 # --------------------------------------------------------------------------- #
 # BQSKit
 # --------------------------------------------------------------------------- #
