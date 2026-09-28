@@ -107,7 +107,7 @@ assessment document for details.
 
 ```bash
 pip install -r requirements.txt     # numpy, scipy (+ optional qiskit, pytket, pyzx, pytest)
-python -m pytest -q tests           # 101 tests: lowering, pass soundness, I/O, routing, framework
+python -m pytest -q tests           # 127 tests: lowering, pass soundness, I/O, routing, framework, resynthesis
 ```
 
 ## Quick start

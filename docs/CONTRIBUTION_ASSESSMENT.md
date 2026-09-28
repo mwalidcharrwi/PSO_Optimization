@@ -23,12 +23,16 @@ possible, so treat them as "not found in the reviewed work".
 | C8 | Verification tooling: exact Choi-state MPS "alternating miter" for 30+ qubit circuits.  This is an MPS realisation of alternating equivalence checking, not a new idea in itself | Implemented; verified the two 31–32-qubit outputs where QCEC did not finish |
 | C9 (v2) | **Memetic, connectivity-preserving block resynthesis for already-mapped circuits**: CNOT deletion inside each block's own CNOT skeleton, so no new qubit interaction can appear.  It adds Schmidt-rank lower bounds, a generic refit of long 3-qubit blocks, pair deletion, DAG-contraction re-insertion (correct for any convex block), and anytime adaptive selection among 12 partition strategies (3–5-qubit blocks).  Gate deletion by re-instantiation itself is BQSKit's idea (scanning gate removal); partition-and-resynthesise is BQSKit's and GUOQ's | Implemented; **by far the largest effect in v2** |
 | C10 (v2) | **Z-slot sparsification**: U3 slots of resynthesised blocks are re-instantiated as Rz where possible (virtual on IBM hardware) | Implemented; −28 % physical single-qubit gates on `mult_8` |
-| C11 (v2) | **Swarm–memetic coupling**: distinct swarm elites as starting points of the memetic phase, and PSO-seeded restarts for hard deletions | Implemented; effect measured by the no-swarm ablation (see §2.3) |
+| C11 (v2) | **Swarm–memetic coupling**: distinct swarm elites as starting points of the memetic phase, and PSO-seeded restarts for hard deletions | Implemented; effect measured by the no-swarm ablation (see §2.0) |
 | C12 (v2) | Lowering-mode gene (per-ECR variants vs greedy exact ECR→CX conversion), and TKET's connectivity-preserving passes as an exact entry of the pass library (applied only before numerical synthesis, chunked for large circuits) | Implemented; the TKET pass is TKET's contribution, not ours |
 
 ## 2. Where the improvements come from
 
-### 2.1 Supplied benchmarks (`test_circuits_new`, IBM-native, fixed mapping)
+### 2.0 v2 versus related work on the supplied benchmarks
+
+<!-- V2_RESULTS -->
+
+### 2.1 v1 on the supplied benchmarks (`test_circuits_new`, IBM-native, fixed mapping)
 
 Stage-by-stage analysis (`results/ibm_testset/breakdown.json`); S4 is the
 HyPSO mean over seeds.
