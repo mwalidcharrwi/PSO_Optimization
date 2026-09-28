@@ -78,6 +78,7 @@ class HyPSOConfig:
     elites: int = 3                    # distinct swarm elites refined by the memetic phase (time-limited runs)
     deepen_qubits: int = 5             # largest block size in the final deepening phase
     resynth_sparse: bool = True        # turn U3 slots of resynthesised blocks into Z rotations
+    large_gates: int = 50000           # time-limited runs on larger circuits skip the swarm phase
     verbose: bool = False
 
 
@@ -131,6 +132,13 @@ class CircuitProblem:
         self.sched_start = len(card)
         self.n_sched = cfg.n_schedule_slots if cfg.use_schedule else 0
         card.extend([len(self.passes)] * self.n_sched)
+        # ---- lowering-mode gene (ibm mode): per-ECR variant genes, or the exact
+        # greedy ECR -> CX conversion (native.to_cx), which pattern-based passes
+        # such as TKET's CliffordSimp often simplify further ----
+        self.lower_gene = None
+        if cfg.mode == "ibm":
+            self.lower_gene = len(card)
+            card.append(2)
         # ---- hardware genes ----
         self.hw_start = len(card)
         self.hw = cfg.hardware
@@ -145,6 +153,7 @@ class CircuitProblem:
         self._init_sites()
         self.cache: dict = {}
         self.genomes: dict = {}
+        self._built: dict = {}
         self.deadline: float | None = None
         self.n_evals = 0
         self.n_requests = 0
@@ -240,6 +249,8 @@ class CircuitProblem:
                    for i in range(self.place_start, self.place_start + self.n_place))
         sc = tuple(self._cat(x[self.sched_start + j], len(self.passes)) for j in range(self.n_sched))
         hw = ()
+        if self.lower_gene is not None:
+            hw = (self._cat(x[self.lower_gene], 2),)
         if self.mode == "hardware":  # key on the decoded layout, not on the raw random keys
             layout, params = self.hw.decode(x[self.hw_start:], self.circ.n_qubits)
             hw = (tuple(layout), tuple(sorted(params.items())))
@@ -248,10 +259,31 @@ class CircuitProblem:
     def build(self, x, native: bool = True) -> tuple[Circuit, dict]:
         """Decode a genome into an optimised circuit (+ decode info).  In ibm
         mode ``native=False`` returns the {1q, cx} circuit before the final
-        conversion to {rz, sx, x, ecr}."""
+        conversion to {rz, sx, x, ecr}.  The last few decodes are memoised
+        (large circuits take minutes to decode)."""
         x = np.asarray(x, dtype=float)
+        pk = self.phenotype_key(x)
+        key = (pk, native)
+        hit = self._built.get(key)
+        if hit is not None:
+            return hit[0], dict(hit[1])
+        pre = self._built.get((pk, False)) if native and self.mode == "ibm" else None
+        if pre is not None:  # native form from the memoised {1q, cx} form
+            circ, info = to_native(pre[0], self.native_dirs), dict(pre[1])
+        else:
+            circ, info = self._build(x, native)
+        self._built[key] = (circ, info)
+        while len(self._built) > 6:
+            self._built.pop(next(iter(self._built)))
+        return circ, dict(info)
+
+    def _build(self, x, native: bool) -> tuple[Circuit, dict]:
         placement = self.placement_fn(x)
-        base = self.lowerer.lower(self.circ, self.variant_choice(x))
+        if self.lower_gene is not None and self._cat(x[self.lower_gene], 2) == 1:
+            from .native import to_cx
+            base = to_base(self.lowerer.lower(to_cx(self.circ)))
+        else:
+            base = self.lowerer.lower(self.circ, self.variant_choice(x))
         circ = base
         numeric = False
         for name in self.schedule(x):
@@ -277,6 +309,7 @@ class CircuitProblem:
             # pairs, then return to {rz, sx, x, ecr} in the native ECR directions
             circ = finish(circ, "continuous", placement)
             if native:
+                self._built[(self.phenotype_key(x), False)] = (circ, dict(info))
                 circ = to_native(circ, self.native_dirs)
         else:
             circ = finish(circ, self.mode, placement)
@@ -302,7 +335,12 @@ class CircuitProblem:
         if "tket" in self.passes and self.n_sched:
             y = x.copy()  # second elite seed: TKET first, then the greedy schedule
             y[self.sched_start] = (self.passes.index("tket") + 0.5) / len(self.passes)
-            return [x, y]
+            seeds = [x, y]
+            if self.lower_gene is not None:
+                z = y.copy()  # greedy ECR -> CX conversion, then TKET (usually the best
+                z[self.lower_gene] = 0.75  # seed: evaluated second, before y)
+                seeds = [x, z, y]
+            return seeds
         if self.mode == "hardware":  # several good SabreLayout layouts as elite seeds
             if getattr(self, "_hw_seeds", None) is None:
                 self._hw_seeds = self.hw.seed_genes_list(self.circ, k=3)
@@ -374,6 +412,7 @@ class CircuitProblem:
     def __getstate__(self):  # the pool cannot be pickled
         d = dict(self.__dict__)
         d["_pool"] = None
+        d["_built"] = {}
         return d
 
 
@@ -419,12 +458,27 @@ def optimize(circ: Circuit, cfg: HyPSOConfig | None = None, **overrides) -> Opti
     problem = CircuitProblem(circ, cfg)
     memetic_history: list = []
     try:
-        greedy_x = problem.seed_positions()[0]
+        large = memetic and cfg.time_limit is not None and len(circ.gates) > cfg.large_gates
+        # very large circuits under a time limit: a decode takes minutes, so the
+        # swarm phase is skipped and the strongest elite seed starts the memetic phase
+        greedy_x = problem.seed_positions()[1 if large and len(problem.seed_positions()) > 1 else 0]
         td = time.time()
         greedy_circ, _ = problem.build(greedy_x)
         t_decode = time.time() - td
+        gkey = problem.phenotype_key(greedy_x)
+        problem.cache[gkey] = problem.cost_of(greedy_circ)
+        problem.genomes[gkey] = np.array(greedy_x, dtype=float)
+        problem.n_evals += 1
         pso_params = cfg.pso
-        if cfg.pso.time_limit is not None and t_decode * cfg.pso.swarm_size > cfg.pso.time_limit:
+        if large:
+            import copy
+            pso_params = copy.copy(cfg.pso)
+            pso_params.swarm_size = 1
+            pso_params.max_iter = 0
+            pso_params.memetic = False
+            pso_params.opposition_init = False
+            problem.seed_positions = lambda: [greedy_x]  # noqa: E731  (only the evaluated seed)
+        elif cfg.pso.time_limit is not None and t_decode * cfg.pso.swarm_size > cfg.pso.time_limit:
             # one swarm generation does not fit into the swarm budget (very large
             # circuits): evaluate only the elite seeds
             import copy
@@ -443,6 +497,9 @@ def optimize(circ: Circuit, cfg: HyPSOConfig | None = None, **overrides) -> Opti
         if cfg.pso.elitist_seed and problem.cost_of(greedy_circ) < problem.cost_of(best):
             best, res.best_x = greedy_circ, greedy_x
         swarm_metrics = metrics(best)
+        if cfg.verbose:
+            print(f"[hypso] swarm phase done at {time.time() - t0:.1f}s: {problem.n_evals} evals, "
+                  f"best {problem.cost_of(best)}", flush=True)
         if memetic:
             # memetic phase: anytime connectivity-preserving resynthesis, first on the
             # distinct swarm elites (each until it stalls), then deepening on the best
@@ -460,6 +517,8 @@ def optimize(circ: Circuit, cfg: HyPSOConfig | None = None, **overrides) -> Opti
                 if left() is not None and left() <= 1:
                     break
                 start, _ = problem.build(xe, native=False)
+                if cfg.verbose:
+                    print(f"[hypso] memetic on elite {j} from {time.time() - t0:.1f}s", flush=True)
                 tl = None if left() is None else max(1.0, left())
                 out, hist = memetic_resynthesis(start, problem.native_dirs, problem.obj_fn, time_limit=tl,
                                                 rounds=cfg.resynth_evals, workers=cfg.resynth_workers,
@@ -483,7 +542,8 @@ def optimize(circ: Circuit, cfg: HyPSOConfig | None = None, **overrides) -> Opti
     if info.get("measure_map") is not None:
         best.meta["measure"] = info["measure_map"]
     if memetic:
-        info = dict(info, swarm_metrics=swarm_metrics, memetic_history=memetic_history)
+        info = dict(info, swarm_metrics=swarm_metrics, memetic_history=memetic_history,
+                    swarm_skipped=bool(large))
     verified = verify(circ, best, info) if cfg.verify else None
     lowered = problem.lowerer.lower(circ)
     return OptimizeResult(best, metrics(best), metrics(circ), metrics(lowered), metrics(greedy_circ),

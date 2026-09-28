@@ -85,6 +85,11 @@ HYPSO_VARIANTS = {
 
 
 def main(argv=None):
+    try:  # small dense linear algebra: one BLAS thread per process (workers run in parallel)
+        from threadpoolctl import threadpool_limits
+        threadpool_limits(1)
+    except ImportError:  # pragma: no cover
+        pass
     ap = argparse.ArgumentParser()
     ap.add_argument("--suite", default="test_circuits_new")
     ap.add_argument("--out", default="results/ibm_literature")

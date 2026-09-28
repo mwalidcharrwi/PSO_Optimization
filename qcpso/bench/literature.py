@@ -111,13 +111,14 @@ class ResynthServer:
 
 
 def run_guoq(circ: Circuit, workdir: str, time_limit: float = 3600.0, snapshots=(),
-             variant: str = "guoq", port: int = 8080, seed: int = 0, heap: str = "4g") -> dict:
+             variant: str = "guoq", port: int = 8080, seed: int = 0, heap: str | None = None) -> dict:
     """Run GUOQ (or QUESO) on a native circuit.
 
     Returns ``{t: (native circuit, respects_mapping)}`` for every snapshot
     time ``t`` (seconds) and for ``time_limit``.  GUOQ writes its best
     circuit continuously; the snapshots copy that file at the given times.
     """
+    workdir = os.path.abspath(workdir)  # GUOQ runs with its own directory as cwd
     os.makedirs(workdir, exist_ok=True)
     small, used = compact(to_cx(circ))
     inp = os.path.join(workdir, "in.qasm")
@@ -126,6 +127,7 @@ def run_guoq(circ: Circuit, workdir: str, time_limit: float = 3600.0, snapshots=
     outdir = os.path.join(workdir, "out")
     os.makedirs(outdir, exist_ok=True)
     jar = os.path.join(GUOQ_DIR, "target", "GUOQ-1.0-jar-with-dependencies.jar")
+    heap = heap or os.environ.get("GUOQ_HEAP", "5g")
     cmd = ["java", f"-Xmx{heap}", "-cp", jar, "qoptimizer.Optimizer", "-g", "IBMN", "--preserve-mapping",
            "-out", outdir, "--seed", str(seed)]
     if variant == "guoq":
@@ -143,6 +145,7 @@ def run_guoq(circ: Circuit, workdir: str, time_limit: float = 3600.0, snapshots=
     proc = subprocess.Popen(cmd, cwd=GUOQ_DIR, env=env, stdout=log, stderr=subprocess.STDOUT,
                             start_new_session=True)
     saved = {}
+    early = None
     try:
         for t in times:
             while time.time() - t0 < t and proc.poll() is None:
@@ -157,6 +160,7 @@ def run_guoq(circ: Circuit, workdir: str, time_limit: float = 3600.0, snapshots=
                 except Exception:
                     time.sleep(0.5)
             saved[t] = dst
+        early = proc.poll()
     finally:
         if proc.poll() is None:
             os.killpg(proc.pid, signal.SIGTERM)
@@ -165,6 +169,8 @@ def run_guoq(circ: Circuit, workdir: str, time_limit: float = 3600.0, snapshots=
             except subprocess.TimeoutExpired:
                 os.killpg(proc.pid, signal.SIGKILL)
         log.close()
+    if early is not None and time.time() - t0 < 0.9 * time_limit:
+        raise RuntimeError(f"GUOQ exited early (code {early}); see {os.path.join(workdir, 'guoq.log')}")
     res = {}
     for t, path in saved.items():
         out = parse_qasm(open(path).read())

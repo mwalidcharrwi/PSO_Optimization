@@ -98,8 +98,24 @@ def kak(circ: Circuit) -> Circuit:
     return _run(circ, [KAKDecomposition(allow_swaps=False)])
 
 
-def full(circ: Circuit) -> Circuit:
-    """Fixed point of the three passes (the TKET-mp baseline pipeline)."""
+CHUNK = 6000  # gates per chunk for large circuits (TKET's passes scale super-linearly)
+
+
+def full(circ: Circuit, chunk: int | None = None) -> Circuit:
+    """Fixed point of the three passes (the TKET-mp baseline pipeline).
+    Circuits larger than ``chunk`` gates are processed in consecutive chunks
+    (each chunk exactly; only rewrites across chunk borders are missed)."""
+    chunk = CHUNK if chunk is None else chunk
+    if chunk and len(circ.gates) > 2 * chunk:
+        out = []
+        for i in range(0, len(circ.gates), chunk):
+            part = Circuit(circ.n_qubits, circ.gates[i:i + chunk])
+            out.extend(_full(part).gates)
+        return Circuit(circ.n_qubits, out, circ.name, circ.meta)
+    return _full(circ)
+
+
+def _full(circ: Circuit) -> Circuit:
     from pytket.circuit import OpType
     from pytket.passes import (CliffordSimp, KAKDecomposition, RemoveRedundancies, RepeatWithMetricPass,
                                SequencePass, SynthesiseTket)
