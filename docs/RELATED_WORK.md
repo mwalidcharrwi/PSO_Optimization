@@ -168,3 +168,22 @@ CX-based tools receive the input converted exactly to {rz, sx, x, cx}
 native lowering that HyPSO-QCO uses, so ECR counts equal their CX counts.
 Anytime tools get the same wall-clock budget on the same 4-core machine.
 Results and discussion: `results/ibm_literature/REPORT.md`.
+
+**Outcome (15 minutes per circuit, one seed).**
+
+| tool | mean ECR reduction vs input |
+|---|---:|
+| Qiskit O3 | −0.1 % |
+| QUESO | 0.1 % |
+| TKET (connectivity-preserving) | 4.1 % |
+| GUOQ | 20.2 % |
+| HyPSO-QCO v2 | **30.8 %** |
+
+* HyPSO-QCO v2 has the fewest ECRs and the fewest total gates on all
+  10 circuits.
+* Rule-based optimisers that preserve the mapping barely reduce two-qubit
+  counts on these Qiskit-compiled circuits.  Only resynthesis (GUOQ,
+  HyPSO-QCO v2) does.
+* GUOQ's advantage over rules comes from BQSKit resynthesis.  It slows
+  down markedly on the 90k–360k-gate circuits (≤ 0.4 % ECR reduction on
+  `grover_10` and `hubbard_18` in 15 minutes).

@@ -32,6 +32,8 @@ INPUT_ORDER = ["mult_8", "heisenberg_8", "add_17", "qae_17", "qft_16", "hubbard_
 def load_rows(root: str):
     rows = []
     for path in glob.glob(os.path.join(root, "**", "results.csv"), recursive=True):
+        if "superseded" in path:
+            continue
         with open(path) as fh:
             for r in csv.DictReader(fh):
                 if r.get("ecr") not in (None, ""):

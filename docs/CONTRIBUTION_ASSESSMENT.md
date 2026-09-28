@@ -30,7 +30,36 @@ possible, so treat them as "not found in the reviewed work".
 
 ### 2.0 v2 versus related work on the supplied benchmarks
 
-<!-- V2_RESULTS -->
+Source: `results/ibm_literature` (protocol in its README).  Every tool ran
+on the same 10 mapped circuits under the same contract, with 15 minutes
+each for the anytime tools and one seed each.
+
+| | ECR, mean reduction vs input | total gates, mean reduction | HyPSO-QCO v2 wins (ECR) |
+|---|---:|---:|---|
+| Qiskit O3 | −0.1 % | 10.4 % | 10 / 10 |
+| TKET (connectivity-preserving) | 4.1 % | 36.2 % | 10 / 10 |
+| QUESO | 0.1 % | 33.7 % | 10 / 10 |
+| GUOQ | 20.2 % | 43.4 % | 10 / 10 |
+| HyPSO-QCO v1 | 1.9 % | 33.0 % | 10 / 10 |
+| **HyPSO-QCO v2** | **30.8 %** | **55.7 %** | – |
+
+* v2 has the fewest ECRs and the fewest total gates on every circuit
+  (one-sided Wilcoxon p = 0.001 against each tool).
+* The margin over the best other tool is 3.5–35 % in ECR count; GUOQ is
+  the best other tool on 7 circuits, TKET on 3.
+* With one resynthesis worker (compute-matched with GUOQ's single search
+  thread), v2 still has fewer ECRs than GUOQ on all 7 circuits of up to
+  17 qubits.  The margin shrinks to 1–2 % on `qae_17` and `qft_16`.
+* Where v2 loses:
+  * physical single-qubit gates on `heisenberg_8` (QUESO 330 vs 425);
+  * a tie on `qae_17`;
+  * total gates on `qae_17` at matched compute (GUOQ 2 % fewer).
+
+**What causes the improvement.**  The step from v1 (1.9 % fewer ECRs) to
+v2 (30.8 %) comes from the memetic phase (C9, C10).  The share of the
+swarm phase is measured by the no-swarm ablation:
+
+<!-- ABLATION_ASSESSMENT -->
 
 ### 2.1 v1 on the supplied benchmarks (`test_circuits_new`, IBM-native, fixed mapping)
 
@@ -140,25 +169,39 @@ compared with the gain from the formulation itself (≈ 20 %).
 
 ## 4. Limitations and threats to validity
 
-1. **No comparison with state-of-the-art superoptimisers** (GUOQ, Quarl,
-   QUESO, Quartz, VOQC, BQSKit).  They may reach larger reductions.  All
-   claims are relative to Qiskit, TKET and PyZX and to PSO/GA/SA/random
-   search on the same decoder.
-2. The built-in suites are programmatic reconstructions of standard
-   families, not the original benchmark files (for example the Nam et al.
-   `.qc` files).
-3. Few seeds (3; 1–2 on the largest supplied circuits) and small budgets on
-   the largest circuits (16–40 evaluations).
-4. **Runtime.**  HyPSO-QCO needs minutes to hours (3.1 h for `hubbard_18`),
-   versus seconds to minutes for Qiskit.  Most of the gain on the supplied
-   circuits is available from the deterministic pipeline in seconds (S1/S3).
-5. The paper referred to in the original task was never provided, so no
+1. **Comparison with superoptimisers is limited to what runs under the
+   fixed-mapping contract.**
+   * GUOQ, QUESO, TKET (connectivity-preserving) and Qiskit O3 were run on
+     the supplied files.
+   * BQSKit O3 did not finish `mult_8` within 35 minutes.
+   * PyZX and VOQC do not preserve connectivity.
+   * Quarl needs a trained GPU model.
+   * QALM, OAC and POPQC have no public implementation for this gate set.
+   * Published numbers do not exist for these circuits.
+2. **Budget.**  Everything was compared at 15 minutes per circuit.  GUOQ's
+   paper uses 1 hour, and GUOQ was still improving on some circuits.
+   Longer budgets may narrow the gap; this was not measured.
+3. **One seed per method** in the v2 comparison.  The margins are mostly
+   larger than the 1-worker vs 4-worker differences observed (0–6 %).
+   They are small on `qae_17` and `qft_16` (1–5 %).
+4. **Numerical, not symbolic, exactness in v2.**  Resynthesised blocks are
+   exact to a Frobenius residual of 1e-10.  The measured output deviations
+   are ≤ 4.2e-8.  v1 and the rule-based tools are exact.
+5. **GUOQ was patched** to make its resynthesis connectivity-aware
+   (`third_party/`).  This restricts GUOQ, but without it GUOQ cannot
+   return a valid circuit for the fixed mapping.  QUESO was run with its
+   authors' total-gate objective.
+6. The built-in suites are programmatic reconstructions of standard
+   families, not the original benchmark files.
+7. The paper referred to in the original task was never provided, so no
    comparison with its method is possible.
-6. For `heisenberg_32` and `hubbard_18`, Qiskit O3 fails with the directed
-   coupling map and was run with an undirected map, a relaxation in
-   Qiskit's favour.
-7. Two proposed components (C4 guidance, C5 placement) showed no benefit.
-   They are kept for completeness, and placement is disabled by default.
+8. For `heisenberg_32` and `hubbard_18`, Qiskit O3 fails with the directed
+   coupling map and was run with an undirected map.  Its outputs there
+   violate the native ECR directions and fail the same-qubit equivalence
+   check.
+9. Components with no measured benefit: C4 (provenance guidance) and C5
+   (placement, off by default).  The swarm phase of v2 is also in doubt:
+   see the ablation in §2.0.
 
 ## 5. Bottom line
 

@@ -596,20 +596,46 @@ def resynthesize(circ: Circuit, max_qubits: int = 3, min_cx: int = 3, seed: int 
         if not (timed_out and r is None):  # an unfinished block is not a proven failure
             _BLOCK_CACHE[key] = r if r is not None else args[4]  # failure: remember the restarts used
     repl = []
-    saved = 0
+    saved = rejected = 0
     for qubits, idx, key, ncx in meta:
         r = _BLOCK_CACHE.get(key)
         if not isinstance(r, tuple):
             continue
         new_cxs, x, kinds = r
-        saved += ncx - len(new_cxs)
         tag = circ.gates[idx[0]].tag
-        repl.append((idx, _gates_from_template(Template(len(qubits), new_cxs, kinds), x, qubits, tag)))
+        new_gates = _gates_from_template(Template(len(qubits), new_cxs, kinds), x, qubits, tag)
+        # safety net: the emitted gate list must reproduce the block (catches any
+        # error in the parameter -> gate conversion); otherwise keep the block
+        err = _block_error(circ, qubits, idx, new_gates)
+        if err > BLOCK_TOL:
+            import sys
+            print(f"[resynth] block on {len(qubits)} qubits rejected: replacement error {err:.2e}",
+                  file=sys.stderr, flush=True)
+            rejected += 1
+            _BLOCK_CACHE[key] = 99  # never retry this block
+            continue
+        saved += ncx - len(new_cxs)
+        repl.append((idx, new_gates))
     if stats is not None:
-        stats.update(blocks=len(blocks), tried=len(meta), computed=len(jobs), saved=saved)
+        stats.update(blocks=len(blocks), tried=len(meta), computed=len(jobs), saved=saved, rejected=rejected)
     if not repl:
         return circ
     return rebuild(circ, repl)
+
+
+BLOCK_TOL = 1e-8
+
+
+def _block_error(circ: Circuit, qubits, idx, new_gates) -> float:
+    """Normalised distance (up to phase) between a block and its replacement."""
+    n = len(qubits)
+    loc = {q: i for i, q in enumerate(qubits)}
+    u = _unitary_of(_block_local(circ, qubits, idx), n)
+    v = _unitary_of([Gate(g.name, tuple(loc[q] for q in g.qubits), g.params) for g in new_gates], n)
+    inner = np.vdot(v, u)
+    if abs(inner) < 1e-12:
+        return 1.0
+    return float(np.linalg.norm(u - inner / abs(inner) * v) / math.sqrt(u.shape[0]))
 
 
 def rebuild(circ: Circuit, repl: list) -> Circuit:

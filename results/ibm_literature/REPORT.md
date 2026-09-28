@@ -82,11 +82,68 @@ fewer gates).  The margins shrink on `qae_17` and `qft_16` (1–2 % ECRs).
 Four workers give a further 0–6 % (on `heisenberg_8` the 1-worker run
 happened to be slightly better).
 
-<!-- ABLATION -->
+## 4. Ablation: what does the swarm phase contribute?
+
+The pre-registered configuration ("v2") spends 25 % of the budget on the
+swarm phase, then refines up to three distinct swarm elites and finally
+deepens the best circuit with 5-qubit blocks.  The ablation "memetic only"
+evaluates just the strongest elite seed (greedy ECR→CX conversion + TKET
+pass + greedy schedule) and gives the whole budget to the memetic phase.
+Same 15-minute budget, 4 workers:
+
+| circuit | v2 (swarm 25 % + memetic): ECR / total | memetic only: ECR / total |
+|---|---|---|
+| mult_8 | 157 / 805 | **156 / 801** |
+| heisenberg_8 | **283 / 1,191** | 291 / 1,240 |
+| add_17 | 389 / **1,647** | **383** / 1,664 |
+| qae_17 | QAE_V2 | QAE_NOSWARM |
+| qft_16 | 511 / **2,118** | 511 / 2,176 |
+| hubbard_8 | 935 / 3,699 | **901 / 3,312** |
+| hhl_8 | 324 / 1,777 | **270 / 1,480** |
+
+(The three large circuits run without a swarm phase in both
+configurations, because one decode takes minutes.)
+
+**Honest reading.**  At a 15-minute budget, the swarm phase does **not**
+pay for its 25 % of the budget on these circuits.  QAE_SUMMARY
+* The run logs show why: the last, *deepening* stage with 4–5-qubit blocks
+  gives large late gains (`hhl_8` 315 → 270, `heisenberg_8` 332 → 291).
+  With a swarm phase and three elites, this stage gets little or no time.
+* The diversity of swarm elites does matter in some cases.  On
+  `heisenberg_8` the best of three elites wins, and on `hhl_8` the three
+  elites end at 324, 338 and 407.  It just matters less than extra
+  resynthesis time.
+
+Consequences:
+1. The headline comparison uses the pre-registered configuration.  The
+   memetic-only configuration would strengthen it, but it was chosen after
+   seeing these results.
+2. The advantage over GUOQ, TKET, QUESO and Qiskit comes from the
+   connectivity-preserving memetic resynthesis (C9, C10), not from the
+   particle swarm.
+3. For already-mapped circuits at short budgets, the recommended setting is
+   `--resynth-share 1.0` (memetic only).  In the other modes (`cliffordt`,
+   `continuous`, `hardware`) the swarm remains the main search engine, as
+   the earlier ablations show.
 
 ## 5. Verification
 
-<!-- VERIFICATION -->
+Every saved output was compared with its input by
+`qcpso.bench.verify_literature` (all rows in
+[verification.csv](verification.csv)):
+* **Circuits with ≤ 20 used qubits:** random-state deviation with a shared
+  global phase, simulated with Qiskit Aer.
+* **`heisenberg_32` and `hubbard_18`:** exact Choi-state MPS miter.
+
+| method | circuits | largest deviation | class |
+|---|---:|---:|---|
+| Qiskit O3 | 8 of 10 | 1.7e-10 | exact |
+| TKET | 8 of 10 | 2.3e-9 | numerically exact (angle rounding) |
+| QUESO | 8 of 10 | 2.3e-9 | numerically exact |
+| GUOQ | 8 of 10 | **5.4e-6** (`qft_16`) | approximate on `qft_16`, otherwise ≤ 4.9e-7 |
+| **HyPSO-QCO v2** | 8 of 10 | 4.2e-8 (`grover_10`) | numerically exact (resynthesis residual ≤ 1e-10 per block) |
+
+<!-- LARGE_VERIFICATION -->
 
 ## 6. Where HyPSO-QCO v2 does *not* win, and caveats
 

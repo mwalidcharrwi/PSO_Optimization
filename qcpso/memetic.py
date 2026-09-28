@@ -28,6 +28,19 @@ def _native(circ: Circuit, native_dirs) -> Circuit:
     return to_native(finish(circ, "continuous"), native_dirs)
 
 
+ROUND_TOL = 1e-7
+
+
+def _round_ok(old: Circuit, new: Circuit) -> bool:
+    """Random-state equivalence of two consecutive memetic states (<= 20 used
+    qubits; larger circuits rely on the per-block checks only)."""
+    if new is old or (len(new.gates) == len(old.gates) and all(a == b for a, b in zip(new.gates, old.gates))):
+        return True
+    from .bench.deviation import deviation
+    d = deviation(old, new, n_states=1)["state_err"]
+    return d is None or d < ROUND_TOL
+
+
 def memetic_resynthesis(circ: Circuit, native_dirs, objective, time_limit: float | None = None,
                         rounds: int = 0, workers: int = 4, seed: int = 0, max_qubits: int = 3,
                         verbose: bool = False, stop_on_stall: bool = False,
@@ -48,7 +61,7 @@ def memetic_resynthesis(circ: Circuit, native_dirs, objective, time_limit: float
     ns = len(strategies)
     quality = np.ones(ns)          # probability matching (adaptive operator selection)
     p_min = 0.1
-    fails = 0
+    fails = rejected = 0
     pool = mp.get_context("fork").Pool(workers) if workers > 1 else None
     r = 0
     try:
@@ -71,6 +84,12 @@ def memetic_resynthesis(circ: Circuit, native_dirs, objective, time_limit: float
                                     time_limit=left, sparse=sparse)
             new = to_base(cleanup(to_base(new), None, "continuous"))
             saved = before - new.cx_count()
+            if new.cx_count() <= before and not _round_ok(cur, new):
+                rejected += 1  # safety net: never accept a round that changes the circuit's action
+                import sys
+                print(f"[memetic] round {r + 1} ({strategy_name(strategies[k])}) rejected: output not "
+                      f"equivalent to its input", file=sys.stderr, flush=True)
+                new, saved = cur, 0
             if new.cx_count() <= before:
                 cur = new
                 nat = _native(cur, native_dirs)

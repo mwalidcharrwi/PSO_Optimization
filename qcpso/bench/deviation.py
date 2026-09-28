@@ -84,7 +84,7 @@ def deviation(a: Circuit, b: Circuit, n_states: int = 2, seed: int = 1234, _cach
     except ImportError:  # pragma: no cover
         use_aer = False
     evolve = _evolve_aer if use_aer else statevector
-    key = (hash(tuple((g.name, g.qubits, g.params) for g in a.gates)), n, seed)
+    key = (hash(tuple((g.name, g.qubits, g.params) for g in a.gates)), n, seed, n_states, use_aer)
     if key not in _cache:  # the input's evolved states are reused for all outputs
         _cache.clear()
         _cache[key] = evolve(A, psi)

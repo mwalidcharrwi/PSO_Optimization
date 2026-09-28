@@ -6,9 +6,10 @@ are exposed (``allow_swaps=False`` everywhere), so they preserve the device
 mapping of already-mapped circuits:
 
 * ``CliffordSimp`` -- Clifford rewrite rules (Duncan & Fagan, arXiv:1901.10114);
-* ``SynthesiseTket`` -- commutation of single-qubit gates through CNOTs and
-  single-qubit squashing;
 * ``KAKDecomposition`` -- optimal two-qubit block resynthesis.
+
+(``SynthesiseTket`` is exposed as a separate function but not used by
+:func:`full`: its squashing drops small rotations, see :func:`_full`.)
 
 The circuits are exchanged gate by gate (no QASM round trip).  Output gates
 are {cx, u3}; callers lower u3 with :func:`qcpso.pipeline.to_base`.
@@ -115,11 +116,23 @@ def full(circ: Circuit, chunk: int | None = None) -> Circuit:
     return _full(circ)
 
 
+CHECK_TOL = 1e-9
+
+
 def _full(circ: Circuit) -> Circuit:
+    """Fixed point of ``KAKDecomposition`` + ``CliffordSimp`` (no implicit
+    swaps).  ``SynthesiseTket`` is *not* used: its single-qubit squashing drops
+    small rotations (e.g. rz(3.8e-4) next to Clifford gates in QAE/QFT
+    circuits), so it is not exact.  As a safety net the result is checked
+    numerically (random-state test, <= 20 used qubits) and the input is
+    returned unchanged if the check fails."""
     from pytket.circuit import OpType
-    from pytket.passes import (CliffordSimp, KAKDecomposition, RemoveRedundancies, RepeatWithMetricPass,
-                               SequencePass, SynthesiseTket)
-    seq = SequencePass([SynthesiseTket(), KAKDecomposition(allow_swaps=False), CliffordSimp(allow_swaps=False),
-                        SynthesiseTket(), RemoveRedundancies()])
+    from pytket.passes import CliffordSimp, KAKDecomposition, RepeatWithMetricPass, SequencePass
+    seq = SequencePass([KAKDecomposition(allow_swaps=False), CliffordSimp(allow_swaps=False)])
     rep = RepeatWithMetricPass(seq, lambda c: c.n_gates_of_type(OpType.CX) * 100000 + c.n_gates)
-    return _run(circ, [rep])
+    out = _run(circ, [rep])
+    from ..bench.deviation import deviation
+    d = deviation(circ, out, n_states=1)["state_err"]
+    if d is not None and d > CHECK_TOL:
+        return circ
+    return out

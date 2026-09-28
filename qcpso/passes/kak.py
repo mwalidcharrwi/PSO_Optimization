@@ -195,7 +195,13 @@ def synthesize_2q(u: np.ndarray, a: int, b: int, k: int | None = None) -> list[G
             x = instantiate(u, kk)
             if x is None:
                 kk += 1
-        if x is None:  # pragma: no cover - should not happen
+        if x is None:  # rare numerical failure at 3 CNOTs: retry with fresh random starts
+            for seed in range(1, 6):
+                x = instantiate(u, 3, rng=np.random.default_rng(1000 + seed), restarts=6)
+                if x is not None:
+                    kk = 3
+                    break
+        if x is None:  # pragma: no cover
             raise RuntimeError("two-qubit synthesis failed")
         tpl = (kk, x)
         _CACHE[key] = tpl
@@ -278,7 +284,10 @@ def resynthesize_blocks(circ: Circuit, min_gain: int = 1) -> tuple[Circuit, bool
         k = robust_min_cnots(u)
         if ncx - k < min_gain:
             continue
-        new = synthesize_2q(u, pair[0], pair[1])
+        try:
+            new = synthesize_2q(u, pair[0], pair[1])
+        except RuntimeError:  # numerical failure: keep the block as it is (always sound)
+            continue
         if sum(1 for g in new if g.name == "cx") >= ncx:
             continue  # numerical synthesis did not reach the predicted count
         tag = circ.gates[idx[0]].tag

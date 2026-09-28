@@ -32,6 +32,9 @@ def _optimize(argv):
     ap.add_argument("--json", action="store_true", help="print metrics as JSON")
     ap.add_argument("--resynth-workers", type=int, default=4, help="ibm mode: block resynthesis processes")
     ap.add_argument("--no-resynth", action="store_true", help="ibm mode: swarm phase only (no memetic phase)")
+    ap.add_argument("--resynth-share", type=float, default=0.75,
+                    help="ibm mode: share of --time-limit for the memetic phase (1.0 = memetic only, "
+                         "recommended for mapped circuits at short budgets)")
     args = ap.parse_args(argv)
     circ = load(args.input)
     hw = None
@@ -46,6 +49,9 @@ def _optimize(argv):
         cfg.time_limit = args.time_limit
         cfg.resynth = not args.no_resynth
         cfg.resynth_workers = args.resynth_workers
+        cfg.resynth_share = args.resynth_share
+        if args.resynth_share >= 1.0:
+            cfg.elites = 1
         if args.time_limit is not None:
             cfg.pso.max_evals = 10 ** 9
     res = optimize(circ, cfg)
