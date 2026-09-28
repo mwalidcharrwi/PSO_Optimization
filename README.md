@@ -23,6 +23,15 @@ categorical PSO for nominal decisions, hybrid constriction/quantum-behaved
 PSO for continuous genes, a provenance-aligned genome, elitist seeding with
 the deterministic compiler, and a provenance-guided memetic local search.
 
+**v2 (`ibm` mode, already-mapped hardware circuits)** adds a memetic phase
+to the swarm.  The swarm's distinct elites are refined by
+*connectivity-preserving numerical resynthesis*: convex 3–5-qubit blocks
+lose CNOTs inside their own CNOT skeleton, so the device mapping cannot
+change.  Single-qubit slots are sparsified to virtual Rz gates, and
+partition strategies are chosen adaptively under a wall-clock budget.
+On the supplied benchmarks, v2 beats GUOQ, QUESO, TKET and Qiskit on every
+circuit (see below).
+
 * Method: [docs/FRAMEWORK.md](docs/FRAMEWORK.md)
 * Literature survey and research gaps: [docs/RELATED_WORK.md](docs/RELATED_WORK.md)
 * Novel directions (implemented and open): [docs/RESEARCH_DIRECTIONS.md](docs/RESEARCH_DIRECTIONS.md)
@@ -32,7 +41,9 @@ the deterministic compiler, and a provenance-guided memetic local search.
 
 ## Results on the built-in suites
 
-These results come from the final code, with 3 seeds per search method.
+These results cover the `cliffordt`, `continuous` and `hardware` modes,
+which v2 does not change (its memetic phase is part of `ibm` mode only).
+They use 3 seeds per search method.
 Every output of the main experiments is verified equivalent to its input by
 simulation.  Full tables, per-circuit numbers and the protocol are in
 [results/](results/).
@@ -70,38 +81,66 @@ Enabling free rotation placement costs 1.6 % (p = 0.016), so it is opt-in.
 Seeding, memetic search, pass-schedule genes, guidance and topology are
 neutral at this budget (< 1 %, not significant).
 
-## Results on the supplied benchmarks (`test_circuits_new`)
+## Results on the supplied benchmarks (`test_circuits_new`): comparison with related work
 
-The ten supplied circuits are already transpiled for a 127-qubit IBM device
-({rz, sx, x, ecr}).  They were re-optimised in `ibm` mode, keeping the
-mapping and native ECR directions; the full protocol is in
+The ten supplied circuits are already transpiled for a 127-qubit IBM
+device ({rz, sx, x, ecr}).  HyPSO-QCO **v2** (`ibm` mode) and the related
+tools re-optimise them under one contract:
+* equivalence on the same physical qubits;
+* two-qubit gates only on pairs coupled in the input;
+* native ECR directions.
+
+The anytime tools each got a **15-minute budget per circuit** on the same
+4-core machine.  Report: [results/ibm_literature/REPORT.md](results/ibm_literature/REPORT.md);
+protocol: [results/ibm_literature/README.md](results/ibm_literature/README.md).
+
+**ECR count** (fewer is better):
+
+| circuit | input | Qiskit O3 | TKET† | QUESO | GUOQ | HyPSO-QCO v1 | **HyPSO-QCO v2** |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| mult_8 | 311 | 311 | 299 | 311 | 199 | 309 | **157** |
+| heisenberg_8 | 420 | 420 | 420 | 420 | 326 | 420 | **283** |
+| add_17 | 499 | 499 | 495 | 499 | 421 | 491 | **389** |
+| qae_17 | 541 | 541 | 537 | 541 | 428 | 527 | **413** |
+| qft_16 | 614 | 614 | 610 | 614 | 536 | 604 | **511** |
+| hubbard_8 | 1,344 | 1,344 | 1,251 | 1,336 | 1,165 | 1,334 | **935** |
+| hhl_8 | 2,377 | 2,377 | 2,365 | 2,377 | 500 | 2,375 | **324** |
+| heisenberg_32 | 3,942 | 4,024 | 3,834 | 3,942 | 3,878 | 3,882 | **3,465** |
+| grover_10 | 16,397 | 16,397 | 14,453 | 16,397 | 16,393 | 16,395 | **13,530** |
+| hubbard_18 | 33,958 | 33,456 | 29,547 | 33,926 | 33,829 | 30,415 | **28,232** |
+| mean reduction | – | −0.1 % | 4.1 % | 0.1 % | 20.2 % | 1.9 % | **30.8 %** |
+
+† TKET's connectivity-preserving passes.  GUOQ ran with coupling-aware
+resynthesis (`third_party/`).  QUESO used its authors' settings.
+
+* **ECRs:** HyPSO-QCO v2 has the fewest on every circuit, against every
+  tool (10/0/0 each; one-sided Wilcoxon p = 0.001).
+* **Total gates:** also the fewest on every circuit.  The mean reduction
+  vs the input is 55.7 %, against 43.4 % for GUOQ and 36.2 % for TKET.
+* **Physical single-qubit gates** (sx, x): fewest on 8 of 10 circuits.
+  On `qae_17` it ties with GUOQ; on `heisenberg_8` QUESO has fewer
+  (330 vs 425), though QUESO keeps all 420 ECRs.
+* **Compute-matched run:** with one resynthesis worker, matching GUOQ's
+  single search thread, it still has fewer ECRs than GUOQ on all 7 circuits
+  of up to 17 qubits.
+* **Verification:** outputs are exact or numerically exact.  The
+  deviations from the inputs are 1e-10 to 4e-8, checked by simulation or
+  a Choi-state MPS miter.
+
+The v2 gains come mainly from the new **memetic phase**:
+connectivity-preserving resynthesis of multi-qubit blocks by CNOT deletion,
+applied to the swarm's elites (see
+[docs/FRAMEWORK.md §7b](docs/FRAMEWORK.md)).  The swarm's share is
+quantified by an ablation in the report and in
+[docs/CONTRIBUTION_ASSESSMENT.md](docs/CONTRIBUTION_ASSESSMENT.md).
+
+```bash
+python -m qcpso optimize mapped.qasm -o out.qasm --mode ibm --time-limit 900 --resynth-workers 4
+```
+
+Results of v1 (no memetic phase) on the same circuits, with GA, SA and
+standard PSO on the same decoder, are in
 [results/ibm_testset/REPORT.md](results/ibm_testset/REPORT.md).
-
-| circuit | ECR: input → HyPSO-QCO (Qiskit O3) | total gates: input → HyPSO-QCO (Qiskit O3) |
-|---|---|---|
-| mult_8 | 311 → **309** (311) | 1,898 → **1,428** (1,958) |
-| heisenberg_8 | 420 → **420** (420) | 2,127 → **1,325** (2,127) |
-| add_17 | 499 → **494** (499) | 2,812 → **2,196** (2,916) |
-| qae_17 | 541 → **530** (541) | 3,033 → **2,399** (3,085) |
-| qft_16 | 614 → **607** (614) | 3,444 → **2,668** (3,505) |
-| hubbard_8 | 1,344 → **1,335** (1,344) | 8,125 → **5,956** (8,070) |
-| hhl_8 | 2,377 → **2,376** (2,377) | 18,165 → **15,402** (19,083) |
-| heisenberg_32 | 3,942 → **3,882** (4,024) | 58,848 → **14,740** (22,592) |
-| grover_10 | 16,397 → **16,395** (16,397) | 93,235 → **71,485** (93,315) |
-| hubbard_18 | 33,958 → **30,415** (33,456) | 357,535 → **135,134** (153,652) |
-
-HyPSO-QCO values are means over seeds.  All outputs are verified equivalent:
-circuits with ≤ 20 active qubits by statevector simulation, and the two with
-31–32 qubits by an exact Choi-state MPS check (`qcpso/bench/mps_verify.py`).  The optimised QASM files are in
-[results/ibm_testset/optimized/](results/ibm_testset/optimized/).
-
-Most of the total-gate reduction on these circuits comes from the
-deterministic native re-synthesis (median −20 %).  The swarm adds a median
-−3.1 % gates and is the only component that lowers the ECR count on 7 of the
-10 circuits.  Against GA and SA on the same decoder, HyPSO-QCO is never worse
-on ECR count and is significantly better than SA, but not significantly
-better than GA (which finds about 0.3 % fewer total gates).  See the
-assessment document for details.
 
 ## Installation
 
