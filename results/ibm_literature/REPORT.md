@@ -161,15 +161,17 @@ Every saved output was compared with its input by
 | GUOQ | **5.4e-6** (`qft_16`) | approximate on `qft_16`, otherwise ≤ 4.9e-7 |
 | **HyPSO-QCO v2** (all configurations) | 5.7e-8 | numerically exact; `heisenberg_32`: 1.6e-10 |
 
-**`hubbard_18`** (18 used qubits, but 105k–357k gates).  Its outputs are
-larger than the statevector check handles.  HyPSO-QCO's output is verified
-step by step, by the run-time checks below:
-* every replaced block is checked exactly;
+**`hubbard_18`** (31 used qubits, 105k–357k gates) is beyond the
+statevector check.  Unlike on `heisenberg_32`, the MPS miter's bond
+dimension grows large here.  HyPSO-QCO's output is verified step by step,
+by the run-time checks below:
+* every replaced block is checked by simulation (tolerance 1e-8);
 * every TKET block is checked by simulation (465 blocks, none rejected).
 
-An end-to-end Choi-MPS check of the HyPSO-QCO output against the input is
-running (`logs/mps_h18_final.log`).  The outputs of the other tools on
-`hubbard_18` are not verified end to end.
+An end-to-end Choi-MPS check of the HyPSO-QCO output against the input
+was stopped after 90 minutes at 44 % of the gates, with bond dimension
+≥ 256 (`logs/mps_h18_final.log`, not in git).  No tool's output on
+`hubbard_18` is verified end to end.
 
 **Safety nets.**  Two issues were found and fixed during this work (see
 `superseded/README.md`):

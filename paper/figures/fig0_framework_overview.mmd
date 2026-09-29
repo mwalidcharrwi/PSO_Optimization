@@ -1,0 +1,10 @@
+flowchart LR
+  A["mapped input circuit<br/>{rz, sx, x, ecr}"] --> B["Phase 1: particle swarm<br/>over compilation decisions<br/>(25% of budget)"]
+  B -->|"up to 3 distinct elites"| C["Phase 2a: memetic resynthesis<br/>of each elite until it stalls"]
+  C -->|"best circuit"| D["Phase 2b: deepening<br/>4-5-qubit blocks until the deadline"]
+  D --> E["native re-synthesis<br/>CX to ECR, minimal rz/sx/x"]
+  E --> F["output (verified)"]
+  subgraph decoder ["decoder = sound optimisation program"]
+    B1["ECR lowering variants"] --> B2["pass schedule:<br/>cancel, fold, hred, kak, tket"] --> B3["clean-up fix point"] --> B4["native re-synthesis"]
+  end
+  B -. "evaluates each particle with" .-> decoder

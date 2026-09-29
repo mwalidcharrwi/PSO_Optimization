@@ -1,0 +1,7 @@
+method,label,circuits,mean_ecr_red,mean_gates_red,mean_oneq_red,mean_depth_red,geomean_ecr_ratio,hypso_ecr_w_t_l,hypso_ecr_wilcoxon_p,hypso_gates_w_t_l,hypso_gates_wilcoxon_p
+qiskit,Qiskit O3,10,-0.0602,10.3826,9.4674,9.1271,1.0006,10/0/0,0.001,10/0/0,0.001
+tket_mp,TKET,10,4.1061,36.2083,30.5407,34.3504,0.9578,10/0/0,0.001,10/0/0,0.001
+queso,QUESO,10,0.0689,33.702,28.5037,34.2482,0.9993,10/0/0,0.001,9/0/1,0.002
+guoq,GUOQ,10,20.1927,43.3629,39.5228,39.3674,0.7436,10/0/0,0.001,10/0/0,0.001
+hypso_v1,HyPSO-QCO v1 (swarm only),10,1.9259,33.0255,27.6573,33.3269,0.9803,10/0/0,0.001,10/0/0,0.001
+hypso,HyPSO-QCO,10,31.3223,55.6191,52.2245,55.2404,0.6258,,,,
