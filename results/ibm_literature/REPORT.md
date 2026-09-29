@@ -91,8 +91,8 @@ At matched compute, HyPSO-QCO v2:
   5 fewer (536 vs 541), and on `qae_17` the margin is 1 ECR.
 * has **fewer total gates on all 7**.
 
-Four workers add a further 2–7 % (`hhl_8`: the 1-worker run was 2 %
-better).
+On six circuits, four workers reduce the ECR count by a further
+1.6–6.7 %.  On `hhl_8` the 1-worker run is 2.4 % better (329 vs 337).
 
 ## 4. Ablation: what does the swarm phase contribute?
 
