@@ -1,0 +1,3 @@
+circuit,used_qubits,method,seed,budget,time,ecr,sx,x,rz,oneq_phys,gates,depth,twoq_depth,coupling_ok,verified,note
+heisenberg_32,32,hypso,0,900.0,905.9,3477,4731,4,4959,4735,13171,2196,779,True,pending,
+hubbard_18,31,hypso,0,900.0,923.3,28364,39686,2,40725,39688,108777,43992,17236,True,pending,

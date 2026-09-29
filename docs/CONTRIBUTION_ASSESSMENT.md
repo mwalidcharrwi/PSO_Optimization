@@ -23,8 +23,8 @@ possible, so treat them as "not found in the reviewed work".
 | C8 | Verification tooling: exact Choi-state MPS "alternating miter" for 30+ qubit circuits.  This is an MPS realisation of alternating equivalence checking, not a new idea in itself | Implemented; verified the two 31–32-qubit outputs where QCEC did not finish |
 | C9 (v2) | **Memetic, connectivity-preserving block resynthesis for already-mapped circuits**: CNOT deletion inside each block's own CNOT skeleton, so no new qubit interaction can appear.  It adds Schmidt-rank lower bounds, a generic refit of long 3-qubit blocks, pair deletion, DAG-contraction re-insertion (correct for any convex block), and anytime adaptive selection among 12 partition strategies (3–5-qubit blocks).  Gate deletion by re-instantiation itself is BQSKit's idea (scanning gate removal); partition-and-resynthesise is BQSKit's and GUOQ's | Implemented; **by far the largest effect in v2** |
 | C10 (v2) | **Z-slot sparsification**: U3 slots of resynthesised blocks are re-instantiated as Rz where possible (virtual on IBM hardware) | Implemented; −28 % physical single-qubit gates on `mult_8` |
-| C11 (v2) | **Swarm–memetic coupling**: distinct swarm elites as starting points of the memetic phase, and PSO-seeded restarts for hard deletions | Implemented; effect measured by the no-swarm ablation (see §2.0) |
-| C12 (v2) | Lowering-mode gene (per-ECR variants vs greedy exact ECR→CX conversion), and TKET's connectivity-preserving passes as an exact entry of the pass library (applied only before numerical synthesis, chunked for large circuits) | Implemented; the TKET pass is TKET's contribution, not ours |
+| C11 (v2) | **Swarm–memetic coupling**: distinct swarm elites as starting points of the memetic phase, and PSO-seeded restarts for hard deletions | Implemented; **does not pay at a 15-minute budget**: the no-swarm ablation is better on 5 of 7 circuits (§2.0) |
+| C12 (v2) | Lowering-mode gene (per-ECR variants vs greedy exact ECR→CX conversion), and TKET's connectivity-preserving passes (`KAKDecomposition` + `CliffordSimp`) as an entry of the pass library.  The TKET pass is applied only before numerical synthesis, and each result is checked by simulation (block-wise on > 20 qubits) | Implemented; the TKET pass is TKET's contribution, not ours |
 
 ## 2. Where the improvements come from
 
@@ -41,25 +41,54 @@ each for the anytime tools and one seed each.
 | QUESO | 0.1 % | 33.7 % | 10 / 10 |
 | GUOQ | 20.2 % | 43.4 % | 10 / 10 |
 | HyPSO-QCO v1 | 1.9 % | 33.0 % | 10 / 10 |
-| **HyPSO-QCO v2** | **30.8 %** | **55.7 %** | – |
+| **HyPSO-QCO v2** | **31.3 %** | **55.6 %** | – |
 
-* v2 has the fewest ECRs and the fewest total gates on every circuit
-  (one-sided Wilcoxon p = 0.001 against each tool).
-* The margin over the best other tool is 3.5–35 % in ECR count; GUOQ is
-  the best other tool on 7 circuits, TKET on 3.
-* With one resynthesis worker (compute-matched with GUOQ's single search
-  thread), v2 still has fewer ECRs than GUOQ on all 7 circuits of up to
-  17 qubits.  The margin shrinks to 1–2 % on `qae_17` and `qft_16`.
-* Where v2 loses:
-  * physical single-qubit gates on `heisenberg_8` (QUESO 330 vs 425);
-  * a tie on `qae_17`;
-  * total gates on `qae_17` at matched compute (GUOQ 2 % fewer).
+* **ECRs:** v2 has the fewest on every circuit (one-sided Wilcoxon
+  p = 0.001 against each tool).
+* **Margin:** 1.9–32.6 % in ECR count over the best other tool.  GUOQ is
+  the best other tool on 7 circuits, TKET on 3.  The two smallest margins
+  are `qae_17` (1.9 %, 420 vs 428) and `qft_16` (3.2 %, 519 vs 536).
+* **Total gates:** v2 has the fewest on 9 of 10 circuits.  On
+  `heisenberg_8` QUESO has 12 fewer.
+* **Compute-matched:** with one resynthesis worker, matching GUOQ's single
+  search thread, v2 has fewer ECRs than GUOQ on 6 of the 7 circuits of up
+  to 17 qubits.  On `qft_16` GUOQ has 5 fewer (536 vs 541), and on
+  `qae_17` the margin is 1 ECR.  Total gates are fewer on all 7.
+* **Where v2 loses:**
+  * on `heisenberg_8`, physical single-qubit gates (QUESO 330 vs 442),
+    total gates (1,217 vs 1,229) and depth;
+  * at matched compute, ECR count on `qft_16`.
 
 **What causes the improvement.**  The step from v1 (1.9 % fewer ECRs) to
-v2 (30.8 %) comes from the memetic phase (C9, C10).  The share of the
-swarm phase is measured by the no-swarm ablation:
+v2 (31.3 %) comes from the memetic phase (C9, C10).  The share of the swarm
+phase is measured by a no-swarm ablation on the 7 circuits of up to
+17 qubits, with the same budget and 4 workers.  In it, the memetic phase
+gets the whole budget and starts from the strongest elite seed (greedy
+exact ECR→CX conversion + TKET pass):
 
-<!-- ABLATION_ASSESSMENT -->
+| | v2 (swarm 25 % + memetic on 3 elites) | memetic only |
+|---|---:|---:|
+| mean ECR reduction vs input | 37.3 % | **38.3 %** |
+| mean total-gate reduction vs input | 51.3 % | **51.7 %** |
+| per circuit, ECR (v2 wins / ties / losses) | 1 / 1 / 5 | |
+| per circuit, total gates | 4 / 0 / 3 | |
+
+**At a 15-minute budget the particle swarm does not contribute to the ECR
+advantage over related work.  It costs about one percentage point.**
+* The logs show that the final deepening stage (4–5-qubit blocks) is
+  where late gains come from.  Every second the swarm takes is missing
+  there.
+* The swarm helps on `mult_8` (153 vs 156 ECRs) and on total gates on 4
+  circuits.  That is not enough to pay for 25 % of the budget.
+* The honest claim for v2 is therefore that the **memetic, connectivity-
+  preserving resynthesis** (C9, C10) is what beats GUOQ, QUESO, TKET and
+  Qiskit here.  The PSO formulation (C1–C3) remains the search engine of
+  the `cliffordt`, `continuous` and `hardware` modes, where it is measured
+  in §2.2 and §3.
+* `--resynth-share 1.0` (memetic only) is the recommended setting for
+  already-mapped circuits at short budgets.
+* The headline comparison uses the configuration fixed before the runs,
+  not this post-hoc choice.
 
 ### 2.1 v1 on the supplied benchmarks (`test_circuits_new`, IBM-native, fixed mapping)
 
@@ -181,12 +210,20 @@ compared with the gain from the formulation itself (≈ 20 %).
 2. **Budget.**  Everything was compared at 15 minutes per circuit.  GUOQ's
    paper uses 1 hour, and GUOQ was still improving on some circuits.
    Longer budgets may narrow the gap; this was not measured.
-3. **One seed per method** in the v2 comparison.  The margins are mostly
-   larger than the 1-worker vs 4-worker differences observed (0–6 %).
-   They are small on `qae_17` and `qft_16` (1–5 %).
-4. **Numerical, not symbolic, exactness in v2.**  Resynthesised blocks are
-   exact to a Frobenius residual of 1e-10.  The measured output deviations
-   are ≤ 4.2e-8.  v1 and the rule-based tools are exact.
+3. **One seed per method** in the v2 comparison.  Re-running v2 after
+   the final code fixes changed its per-circuit ECR counts by −4 % to +4 %.
+   All margins over the best other tool are larger than that, except
+   `qae_17` (1.9 %) and `qft_16` (3.2 %).
+4. **Numerical, not symbolic, exactness in v2.**
+   * Every replaced block is checked (deviation ≤ 1e-8), and so is every
+     accepted memetic round (random states, ≤ 20 qubits).  The TKET pass
+     is also checked by simulation, block-wise on wider circuits.
+   * The measured output deviations are ≤ 5.7e-8.  GUOQ's `qft_16` output
+     deviates by 5.4e-6.  v1 and the rule-based tools are exact.
+   * These checks were added after TKET's `SynthesiseTket` was found to
+     drop a small rotation (`rz(3.8e-4)`) on `qae_17`.  The pass is no
+     longer used, and the results from before the fix are kept apart in
+     `results/ibm_literature/superseded/`.
 5. **GUOQ was patched** to make its resynthesis connectivity-aware
    (`third_party/`).  This restricts GUOQ, but without it GUOQ cannot
    return a valid circuit for the fixed mapping.  QUESO was run with its
@@ -200,17 +237,27 @@ compared with the gain from the formulation itself (≈ 20 %).
    violate the native ECR directions and fail the same-qubit equivalence
    check.
 9. Components with no measured benefit: C4 (provenance guidance) and C5
-   (placement, off by default).  The swarm phase of v2 is also in doubt:
-   see the ablation in §2.0.
+   (placement, off by default).  The swarm phase of v2 (C11) also has no
+   measured benefit at 15 minutes (§2.0).
 
 ## 5. Bottom line
 
-The strongest, best-supported contribution is the **formulation**:
+**v2 against related work.**  On the supplied, already-mapped IBM circuits,
+HyPSO-QCO v2 has fewer two-qubit gates than GUOQ, QUESO, TKET and Qiskit O3
+on all 10 circuits.  The mean ECR reduction is 31.3 %, against 20.2 % for
+GUOQ, the strongest related tool.  At matched compute it wins on 6 of 7.
+All outputs are verified to be (numerically) exactly equivalent.  This
+advantage is due to the new memetic, connectivity-preserving block
+resynthesis (C9, C10), not to the particle swarm: an ablation without the
+swarm phase is slightly better (§2.0).
+
+**The PSO formulation.**  The strongest, best-supported PSO contribution is the **formulation**:
 searching exactly-equivalent compilation decisions (C1), including a rich,
 systematically enumerated decomposition-variant space (C2), with a PSO
 adapted to nominal variables (C3).  This formulation scales to real,
 hardware-compiled circuits and yields verified improvements over industrial
-optimisers.  On the supplied IBM-native circuits, most of the gate reduction
-comes from the deterministic native re-synthesis (C7).  The swarm
-consistently adds a further few percent of gates.  On 7 of the 10 circuits
-it is the only component that reduces the two-qubit gate count at all.
+optimisers.  In v1 on the supplied IBM-native circuits, most of the gate
+reduction comes from the deterministic native re-synthesis (C7).  The
+swarm consistently adds a further few percent of gates.  On 7 of the 10
+circuits it is v1's only component that reduces the two-qubit gate count
+at all.

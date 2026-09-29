@@ -250,14 +250,21 @@ and tuned for anytime use under a wall-clock budget *T*.
   variants, or the exact greedy ECR→CX conversion `native.to_cx`), plus pass
   schedule genes.
 * The pass library now also contains `tket`: the fixed point of TKET's
-  `SynthesiseTket`, `KAKDecomposition` and `CliffordSimp`, all with
-  `allow_swaps=False` (`passes/tket_bridge.py`).
+  `KAKDecomposition` and `CliffordSimp`, both with `allow_swaps=False`
+  (`passes/tket_bridge.py`).
   * These passes never create a new qubit interaction.
-  * TKET snaps near-special angles (about 1e-8 per pass), so the decoder
-    applies `tket` only to exact circuits, before any numerically
-    synthesised block.
-  * Circuits above 12,000 gates are processed in 6,000-gate chunks (no
-    measurable loss; 3–10× faster).
+  * TKET's `SynthesiseTket` is deliberately excluded: its single-qubit
+    squashing dropped a small rotation `rz(3.8e-4)` on `qae_17`, a
+    3.8e-4 error.
+  * Every TKET result is **checked by simulation** and discarded if it
+    deviates by more than 1e-9.
+    * Circuits with ≤ 20 used qubits are checked whole, in 6,000-gate
+      chunks when large.
+    * Wider circuits are processed inside convex blocks of ≤ 10 qubits,
+      each checked separately.  On `hubbard_18`, 465 blocks were checked
+      and none was rejected.
+  * The decoder applies `tket` only to exact circuits, before any
+    numerically synthesised block.
 * Three elite seeds: the greedy schedule; greedy ECR→CX conversion + TKET +
   greedy schedule; variant lowering + TKET + greedy schedule.
 * Evaluation batches respect the phase deadline.
@@ -322,12 +329,21 @@ Other features of phase 2:
   173 CNOTs from one seed, 161 from the swarm's elite).
 
 **Soundness.**
-* Phase 1 is exact.
+* Phase 1 is exact.  Its only external pass (TKET) is checked by
+  simulation, as described above.
 * Phase 2 is numerically exact per block (Frobenius residual < 1e-10).
-* The contraction-based rebuild makes block replacement correct by
-  construction.
-* Every output is re-verified independently: statevector simulation for
-  ≤ 20 used qubits, and the Choi-state MPS miter for larger circuits.
+* Two run-time safety nets guard phase 2:
+  1. every replaced block's emitted gate list is re-simulated and compared
+     with the original block (tolerance 1e-8);
+  2. for circuits with ≤ 20 used qubits, every accepted memetic round is
+     checked against its predecessor by a random-state test (tolerance 1e-7).
+* A rejected step is logged and skipped.  No step was rejected in the final
+  runs.
+* The contraction-based rebuild makes block replacement correct for any
+  convex block.
+* Every output is re-verified independently afterwards: statevector
+  simulation for ≤ 20 used qubits, and the Choi-state MPS miter for larger
+  circuits where it converges.
 
 ## 8. Complexity
 

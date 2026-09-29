@@ -35,7 +35,7 @@ def main(argv=None):
     ap.add_argument("--suite", default="test_circuits_new")
     ap.add_argument("--large", action="store_true", help="also run the MPS miter for > 20 used qubits")
     ap.add_argument("--only", default="", help="substring filter on file names")
-    ap.add_argument("--exclude", default="", help="skip files whose name contains this substring (e.g. '@')")
+    ap.add_argument("--exclude", default="", help="comma-separated substrings; skip matching files (e.g. '@,qiskit')")
     ap.add_argument("--max-bond", type=int, default=2048)
     args = ap.parse_args(argv)
     out_csv = os.path.join(args.root, "verification.csv")
@@ -47,8 +47,9 @@ def main(argv=None):
     new = not os.path.exists(out_csv)
     for path in files:
         rel = os.path.relpath(path, args.root)
+        excl = [e for e in args.exclude.split(",") if e]
         if rel in done or "superseded" in rel or (args.only and args.only not in rel) or \
-                (args.exclude and args.exclude in rel):
+                any(e in rel for e in excl):
             continue
         name, method, seed = os.path.basename(path)[:-5].split("__")
         orig = load(os.path.join(args.suite, name + ".qasm"))

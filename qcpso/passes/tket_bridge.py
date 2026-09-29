@@ -102,10 +102,20 @@ def kak(circ: Circuit) -> Circuit:
 CHUNK = 6000  # gates per chunk for large circuits (TKET's passes scale super-linearly)
 
 
+BLOCK_QUBITS = 10   # wide circuits: TKET is applied inside convex blocks of at most this many qubits
+STATS = {"blocks": 0, "rejected": 0}
+
+
 def full(circ: Circuit, chunk: int | None = None) -> Circuit:
-    """Fixed point of the three passes (the TKET-mp baseline pipeline).
-    Circuits larger than ``chunk`` gates are processed in consecutive chunks
-    (each chunk exactly; only rewrites across chunk borders are missed)."""
+    """TKET's exact connectivity-preserving passes (see :func:`_full`).
+
+    Circuits with more than 20 used qubits cannot be checked by simulation,
+    so they are partitioned into convex blocks of at most ``BLOCK_QUBITS``
+    qubits; each block is optimised and *checked* separately and kept only if
+    it is equivalent to the original block.  Narrower circuits larger than
+    ``chunk`` gates are processed in consecutive (checked) chunks."""
+    if len(circ.used_qubits()) > 20:
+        return _blockwise(circ)
     chunk = CHUNK if chunk is None else chunk
     if chunk and len(circ.gates) > 2 * chunk:
         out = []
@@ -117,6 +127,26 @@ def full(circ: Circuit, chunk: int | None = None) -> Circuit:
 
 
 CHECK_TOL = 1e-9
+
+
+def _blockwise(circ: Circuit, max_qubits: int | None = None) -> Circuit:
+    from .resynth import partition, rebuild
+    max_qubits = max_qubits or BLOCK_QUBITS
+    repl = []
+    for qubits, idx in partition(circ, max_qubits):
+        if sum(1 for i in idx if len(circ.gates[i].qubits) == 2) < 3:
+            continue
+        loc = {q: j for j, q in enumerate(qubits)}
+        sub = Circuit(len(qubits), [Gate(circ.gates[i].name, tuple(loc[q] for q in circ.gates[i].qubits),
+                                         circ.gates[i].params) for i in idx])
+        STATS["blocks"] += 1
+        out = _full(sub)
+        if out is sub:
+            continue
+        if out.cx_count() > sub.cx_count():
+            continue
+        repl.append((idx, [Gate(g.name, tuple(qubits[q] for q in g.qubits), g.params) for g in out.gates]))
+    return rebuild(circ, repl) if repl else circ
 
 
 def _full(circ: Circuit) -> Circuit:
@@ -133,6 +163,8 @@ def _full(circ: Circuit) -> Circuit:
     out = _run(circ, [rep])
     from ..bench.deviation import deviation
     d = deviation(circ, out, n_states=1)["state_err"]
-    if d is not None and d > CHECK_TOL:
+    if d is None or d > CHECK_TOL:  # unverifiable (> 20 qubits) or not exact: keep the input
+        if d is not None:
+            STATS["rejected"] += 1
         return circ
     return out

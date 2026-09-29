@@ -29,8 +29,8 @@ to the swarm.  The swarm's distinct elites are refined by
 lose CNOTs inside their own CNOT skeleton, so the device mapping cannot
 change.  Single-qubit slots are sparsified to virtual Rz gates, and
 partition strategies are chosen adaptively under a wall-clock budget.
-On the supplied benchmarks, v2 beats GUOQ, QUESO, TKET and Qiskit on every
-circuit (see below).
+On the supplied benchmarks, v2 has fewer two-qubit gates than GUOQ, QUESO,
+TKET and Qiskit on every circuit (see below).
 
 * Method: [docs/FRAMEWORK.md](docs/FRAMEWORK.md)
 * Literature survey and research gaps: [docs/RELATED_WORK.md](docs/RELATED_WORK.md)
@@ -98,44 +98,52 @@ protocol: [results/ibm_literature/README.md](results/ibm_literature/README.md).
 
 | circuit | input | Qiskit O3 | TKET† | QUESO | GUOQ | HyPSO-QCO v1 | **HyPSO-QCO v2** |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| mult_8 | 311 | 311 | 299 | 311 | 199 | 309 | **157** |
-| heisenberg_8 | 420 | 420 | 420 | 420 | 326 | 420 | **283** |
-| add_17 | 499 | 499 | 495 | 499 | 421 | 491 | **389** |
-| qae_17 | 541 | 541 | 537 | 541 | 428 | 527 | **413** |
-| qft_16 | 614 | 614 | 610 | 614 | 536 | 604 | **511** |
-| hubbard_8 | 1,344 | 1,344 | 1,251 | 1,336 | 1,165 | 1,334 | **935** |
-| hhl_8 | 2,377 | 2,377 | 2,365 | 2,377 | 500 | 2,375 | **324** |
-| heisenberg_32 | 3,942 | 4,024 | 3,834 | 3,942 | 3,878 | 3,882 | **3,465** |
-| grover_10 | 16,397 | 16,397 | 14,453 | 16,397 | 16,393 | 16,395 | **13,530** |
-| hubbard_18 | 33,958 | 33,456 | 29,547 | 33,926 | 33,829 | 30,415 | **28,232** |
-| mean reduction | – | −0.1 % | 4.1 % | 0.1 % | 20.2 % | 1.9 % | **30.8 %** |
+| mult_8 | 311 | 311 | 299 | 311 | 199 | 309 | **153** |
+| heisenberg_8 | 420 | 420 | 420 | 420 | 326 | 420 | **276** |
+| add_17 | 499 | 499 | 495 | 499 | 421 | 491 | **390** |
+| qae_17 | 541 | 541 | 537 | 541 | 428 | 527 | **420** |
+| qft_16 | 614 | 614 | 610 | 614 | 536 | 604 | **519** |
+| hubbard_8 | 1,344 | 1,344 | 1,251 | 1,336 | 1,165 | 1,334 | **930** |
+| hhl_8 | 2,377 | 2,377 | 2,365 | 2,377 | 500 | 2,375 | **337** |
+| heisenberg_32 | 3,942 | 4,024‡ | 3,834 | 3,942 | 3,878 | 3,882 | **3,328** |
+| grover_10 | 16,397 | 16,397 | 14,453 | 16,397 | 16,393 | 16,395 | **13,543** |
+| hubbard_18 | 33,958 | 33,456‡ | 29,547 | 33,926 | 33,829 | 30,415 | **27,559** |
+| mean reduction | – | −0.1 % | 4.1 % | 0.1 % | 20.2 % | 1.9 % | **31.3 %** |
 
 † TKET's connectivity-preserving passes.  GUOQ ran with coupling-aware
 resynthesis (`third_party/`).  QUESO used its authors' settings.
+‡ Qiskit needed an undirected coupling map here; its output breaks the
+same-qubit contract.
 
 * **ECRs:** HyPSO-QCO v2 has the fewest on every circuit, against every
   tool (10/0/0 each; one-sided Wilcoxon p = 0.001).
-* **Total gates:** also the fewest on every circuit.  The mean reduction
-  vs the input is 55.7 %, against 43.4 % for GUOQ and 36.2 % for TKET.
-* **Physical single-qubit gates** (sx, x): fewest on 8 of 10 circuits.
-  On `qae_17` it ties with GUOQ; on `heisenberg_8` QUESO has fewer
-  (330 vs 425), though QUESO keeps all 420 ECRs.
-* **Compute-matched run:** with one resynthesis worker, matching GUOQ's
-  single search thread, it still has fewer ECRs than GUOQ on all 7 circuits
-  of up to 17 qubits.
-* **Verification:** outputs are exact or numerically exact.  The
-  deviations from the inputs are 1e-10 to 4e-8, checked by simulation or
-  a Choi-state MPS miter.
+* **Total gates:** the fewest on 9 of 10 circuits.  The mean reduction vs
+  the input is 55.6 %, against 43.4 % for GUOQ and 36.2 % for TKET.  On
+  `heisenberg_8` QUESO has 12 fewer gates (1,217 vs 1,229) and fewer
+  physical single-qubit gates (330 vs 442), but keeps all 420 ECRs (v2: 276).
+* **Compute-matched run:** GUOQ searches in one thread.  With one
+  resynthesis worker, v2 has fewer ECRs than GUOQ on 6 of the 7 circuits of
+  up to 17 qubits.  On `qft_16` GUOQ has 5 fewer (536 vs 541).  v2 has fewer
+  total gates on all 7.
+* **Verification:** every output was checked against its input by
+  simulation, or by a Choi-state MPS miter for `heisenberg_32`.  HyPSO-QCO's
+  outputs deviate by at most 5.7e-8 (numerically exact).  GUOQ's `qft_16`
+  output deviates by 5.4e-6.
 
-The v2 gains come mainly from the new **memetic phase**:
-connectivity-preserving resynthesis of multi-qubit blocks by CNOT deletion,
-applied to the swarm's elites (see
-[docs/FRAMEWORK.md §7b](docs/FRAMEWORK.md)).  The swarm's share is
-quantified by an ablation in the report and in
-[docs/CONTRIBUTION_ASSESSMENT.md](docs/CONTRIBUTION_ASSESSMENT.md).
+The v2 gains come from the new **memetic phase**:
+connectivity-preserving resynthesis of multi-qubit blocks by CNOT deletion
+(see [docs/FRAMEWORK.md §7b](docs/FRAMEWORK.md)), **not from the particle
+swarm**.  An ablation gives the whole 15-minute budget to the memetic phase,
+starting from the deterministic seed.  It is even better: 38.3 % mean ECR
+reduction vs 37.3 % on the 7 smaller circuits, and fewer ECRs on 5 of 7.
+For already-mapped circuits and short budgets, use `--resynth-share 1.0`
+(details in the report and in
+[docs/CONTRIBUTION_ASSESSMENT.md](docs/CONTRIBUTION_ASSESSMENT.md)).
 
 ```bash
 python -m qcpso optimize mapped.qasm -o out.qasm --mode ibm --time-limit 900 --resynth-workers 4
+# memetic phase only (best at short budgets, see the ablation):
+python -m qcpso optimize mapped.qasm -o out.qasm --mode ibm --time-limit 900 --resynth-share 1.0
 ```
 
 Results of v1 (no memetic phase) on the same circuits, with GA, SA and

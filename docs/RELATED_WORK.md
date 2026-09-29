@@ -158,7 +158,7 @@ Driver: `qcpso/bench/compare_ibm.py`; tool wrappers:
 | Tool | Configuration used |
 |---|---|
 | Qiskit 2.x O3 | `generate_preset_pass_manager(3)`, basis {rz, sx, x, ecr}, directed coupling map = the input's ECR directions, trivial layout (undirected map as fallback) |
-| TKET (pytket 2.x) | Connectivity-preserving fixed point of `SynthesiseTket`, `KAKDecomposition(allow_swaps=False)` and `CliffordSimp(allow_swaps=False)`.  `FullPeepholeOptimise` is not used: its 3-qubit resynthesis can couple uncoupled qubits |
+| TKET (pytket 2.x) | Connectivity-preserving fixed point of `SynthesiseTket`, `KAKDecomposition(allow_swaps=False)` and `CliffordSimp(allow_swaps=False)`.  `FullPeepholeOptimise` is not used: its 3-qubit resynthesis can couple uncoupled qubits.  (HyPSO-QCO's own TKET pass leaves out `SynthesiseTket`, which can drop small rotations; the baseline's outputs were all verified numerically exact) |
 | QUESO (PLDI'23) | GUOQ binary with the authors' QUESO flags (`-opt TOTAL -search BEAM -temp 0 -q 8000 -resynth NONE`) + `--preserve-mapping` |
 | GUOQ (ASPLOS'25) | IBM-Eagle gate set, `-opt TWO_Q` (2q count, then total), BQSKit resynthesis, `--preserve-mapping`.  Resynthesis made coupling-aware with a small patch (`third_party/`) |
 | BQSKit O3 | `compile(optimization_level=3)` with a `MachineModel` whose coupling graph is the input's coupled pairs |
@@ -177,10 +177,12 @@ Results and discussion: `results/ibm_literature/REPORT.md`.
 | QUESO | 0.1 % |
 | TKET (connectivity-preserving) | 4.1 % |
 | GUOQ | 20.2 % |
-| HyPSO-QCO v2 | **30.8 %** |
+| HyPSO-QCO v2 | **31.3 %** |
 
-* HyPSO-QCO v2 has the fewest ECRs and the fewest total gates on all
-  10 circuits.
+* HyPSO-QCO v2 has the fewest ECRs on all 10 circuits and the fewest total
+  gates on 9.  With one resynthesis worker it still has fewer ECRs than
+  GUOQ on 6 of 7.  The gain comes from its memetic resynthesis phase, not
+  from the swarm (ablation in the report).
 * Rule-based optimisers that preserve the mapping barely reduce two-qubit
   counts on these Qiskit-compiled circuits.  Only resynthesis (GUOQ,
   HyPSO-QCO v2) does.

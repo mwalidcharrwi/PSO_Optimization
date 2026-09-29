@@ -53,8 +53,29 @@ def _site_order(qubits, gates):
     return order
 
 
+def _qubit_times(gates) -> list[float]:
+    """Per-gate progress: max over its qubits of (two-qubit gates already seen
+    on that qubit) / (two-qubit gates on that qubit in total)."""
+    tot: dict = defaultdict(int)
+    for g in gates:
+        if len(g.qubits) == 2:
+            for q in g.qubits:
+                tot[q] += 1
+    seen: dict = defaultdict(int)
+    out = []
+    for g in gates:
+        out.append(max((seen[q] / tot[q]) if tot[q] else 0.0 for q in g.qubits))
+        if len(g.qubits) == 2:
+            for q in g.qubits:
+                seen[q] += 1
+    return out
+
+
 def choi_equivalence(a: Circuit, b: Circuit, max_bond: int = 2048, cutoff: float = 1e-12,
-                     verbose: bool = False) -> dict:
+                     verbose: bool = False, schedule: str = "global") -> dict:
+    """``schedule``: "global" (default) advances A and B by their global
+    two-qubit fractions; "qubit" by per-qubit progress (experimental: in our
+    tests it was much slower)."""
     import quimb.tensor as qtn
     qubits = sorted(a.used_qubits() | b.used_qubits())
     order = _site_order(qubits, a.gates)
@@ -71,8 +92,13 @@ def choi_equivalence(a: Circuit, b: Circuit, max_bond: int = 2048, cutoff: float
     t0 = time.time()
     total = len(a.gates) + len(b.gates)
     step = 0
+    ta = _qubit_times(a.gates) if schedule == "qubit" else None
+    tb = _qubit_times(b.gates) if schedule == "qubit" else None
     while i < len(a.gates) or j < len(b.gates):
-        take_a = j >= len(b.gates) or (i < len(a.gates) and ca / na2 <= cb / nb2)
+        if schedule == "qubit":
+            take_a = j >= len(b.gates) or (i < len(a.gates) and ta[i] <= tb[j])
+        else:
+            take_a = j >= len(b.gates) or (i < len(a.gates) and ca / na2 <= cb / nb2)
         if take_a:
             g = a.gates[i]
             i += 1
@@ -106,7 +132,7 @@ def main(argv=None):
     a, b = load(argv[0]), load(argv[1])
     if b.n_qubits < a.n_qubits:
         b = Circuit(a.n_qubits, b.gates)
-    res = choi_equivalence(a, b, verbose=True)
+    res = choi_equivalence(a, b, verbose=True, schedule=argv[2] if len(argv) > 2 else "global")
     res["deviation"] = 1 - res["overlap"]
     res["verdict"] = ("equivalent" if res["overlap"] > 1 - 1e-9 else
                       ("not_equivalent" if not res["truncated"] else "inconclusive"))
