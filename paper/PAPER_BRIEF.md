@@ -84,6 +84,9 @@ source of truth for a research paper.
 
 ### 3.1 Overview
 
+Rendered figure: `figures/diag1_framework_workflow` (editable source in
+`figures/src/`).  Simplified sketch:
+
 ```mermaid
 flowchart LR
   A["mapped input circuit<br/>{rz, sx, x, ecr}"] --> B["Phase 1: particle swarm<br/>over compilation decisions<br/>(25% of budget)"]
@@ -350,7 +353,7 @@ lowering that HyPSO-QCO uses, so ECR counts equal their CX counts.
 
 ## 6. Results
 
-Figures: `paper/figures/fig1…fig6` (PDF and PNG).  LaTeX tables:
+Figures: `paper/figures/` (diagrams `diag1`–`diag4`, charts `fig1`–`fig13`; PDF and PNG; captions in §12).  LaTeX tables:
 `paper/tables.tex`.  Data: `paper/data/*.csv`.
 
 ### 6.1 RQ1: How does HyPSO-QCO compare with related work?
@@ -760,14 +763,14 @@ HyPSO-QCO vs each method as W/T/L (one-sided Wilcoxon p)**
 | 1 Introduction | two-qubit gates dominate error; mapped circuits leave little room for rule-based tools; contributions list (§4, C1–C3, C9, C10) | – |
 | 2 Background and related work | §11 | – |
 | 3 Problem | §2 (contract) | – |
-| 4 Method | §3.1–3.5 | Fig. 0 (`fig0_framework_overview`) |
-| 5 Setup | §5 | `tab:benchmarks` |
-| 6.1 vs related work | §6.1 | `tab:ecr`, `tab:gates`, `tab:stats`, Fig. 1, Fig. 2 |
-| 6.2 compute-matched | §6.2 | `tab:ablation`, Fig. 4 |
-| 6.3 anytime | §6.3 | Fig. 3 |
-| 6.4 ablation | §6.4 | Table F/G, Fig. 4 |
-| 6.5 PSO as search strategy | §6.5 | `tab:search`, `tab:components`, Figs. 5–6 |
-| 6.6 correctness | §6.6 | `tab:verification` |
+| 4 Method | §3.1–3.5 | `diag1` (workflow), `diag2` (particle → decoder), `diag4` (block resynthesis) |
+| 5 Setup | §5 | `diag3` (evaluation protocol), `tab:benchmarks` |
+| 6.1 vs related work | §6.1 | `tab:ecr`, `tab:gates`, `tab:stats`, `fig1`, `fig2`, `fig9`, `fig10`, `fig7`, `fig11` |
+| 6.2 compute-matched | §6.2 | `tab:ablation`, `fig4` |
+| 6.3 anytime | §6.3 | `fig3`, `fig12` |
+| 6.4 ablation | §6.4 | Table F/G, `fig8`, `fig4` |
+| 6.5 PSO as search strategy | §6.5 | `tab:search`, `tab:components`, `fig5`, `fig6` |
+| 6.6 correctness | §6.6 | `tab:verification`, `fig13` |
 | 7 Discussion / limitations | §7, §8, §9 | – |
 
 ---
@@ -870,13 +873,12 @@ without access to a bibliography database.)
 |---|---|
 | `PAPER_BRIEF.md` | this brief |
 | `tables.tex` | LaTeX tables (`booktabs`): `tab:benchmarks`, `tab:ecr`, `tab:gates`, `tab:oneq`, `tab:depth`, `tab:stats`, `tab:ablation`, `tab:verification`, `tab:search`, `tab:components` |
-| `figures/fig0_framework_overview` (.png/.svg/.mmd) | framework overview (§3.1) |
-| `figures/fig1_ecr_reduction` (.pdf/.png) | ECR reduction per circuit and tool |
-| `figures/fig2_total_gate_reduction` | total-gate reduction per circuit and tool |
-| `figures/fig3_anytime` | best ECR vs time, 7 circuits |
-| `figures/fig4_relative_to_guoq` | ECR relative to GUOQ (4 workers, 1 worker, no swarm) |
-| `figures/fig5_search_strategies` | search strategies on the logical suites |
-| `figures/fig6_component_ablation` | swarm component ablation |
+| `figures/diag1_framework_workflow` (.pdf/.svg/.png) | two-phase framework workflow |
+| `figures/diag2_particle_decoding` | particle encoding → decoder → cost → swarm update |
+| `figures/diag3_evaluation_protocol` | experimental protocol |
+| `figures/diag4_block_resynthesis` (.pdf/.png) | one block-resynthesis step at circuit level |
+| `figures/src/*.mmd` | editable Mermaid sources of `diag1`–`diag3` |
+| `figures/fig1`–`fig13` (.pdf/.png) | data charts (captions below) |
 | `data/benchmarks.csv` | input characteristics |
 | `data/ibm_comparison.csv` | every method × circuit: ECR, sx+x, gates, depth, time, reduction, deviation |
 | `data/summary_stats.csv` | mean reductions, W/T/L and Wilcoxon p |
@@ -886,27 +888,71 @@ without access to a bibliography database.)
 | `data/builtin_*.csv` | logical-suite results, ranks and ablation |
 | `build_package.py` | regenerates everything above from `results/` |
 
-**Suggested figure captions:**
-* **Fig. 0.**  Overview of HyPSO-QCO.  Particles encode decisions of a
-  sound compiler (decoder), so every candidate is exactly equivalent to the
-  input.  The best distinct candidates are refined by connectivity-
-  preserving memetic resynthesis.
-* **Fig. 1.**  Two-qubit (ECR) gate reduction relative to the input on the
-  ten IBM-Eagle-mapped benchmarks (15 min per circuit for the anytime
-  tools).
-* **Fig. 2.**  Total native gate reduction relative to the input.
-* **Fig. 3.**  Best ECR count found so far over wall-clock time.  GUOQ and
-  QUESO are sampled at 1, 5 and 15 min; TKET is shown as a line.
-  HyPSO-QCO traces are rebuilt from per-round logs.  The flat start of
-  HyPSO-QCO is its swarm phase.
-* **Fig. 4.**  ECR count relative to GUOQ (15 min) for HyPSO-QCO with 4
+**Suggested figure captions** (all figures share one colour system:
+HyPSO-QCO blue, GUOQ orange, TKET green, QUESO yellow, Qiskit pink;
+HyPSO-QCO variants and pipeline stages in shades of blue):
+
+*Method diagrams*
+* **diag1 (framework workflow).**  HyPSO-QCO.  Phase 1: a particle swarm
+  searches the decisions of a sound compiler, so every candidate is exactly
+  equivalent to the input.  Phase 2: the best distinct candidates are
+  refined by memetic, connectivity-preserving block resynthesis until the
+  deadline.
+* **diag2 (particle decoding).**  A particle is a vector of decision genes
+  keyed by provenance.  The decoder lowers gates with the chosen variants,
+  runs the chosen passes, cleans up and re-synthesises native gates.
+  Categorical PSO updates one probability vector per gene.
+* **diag3 (evaluation protocol).**  Every optimiser receives the same
+  mapped circuits under one contract.  Outputs are converted back to native
+  gates the same way, checked for equivalence and measured with the same
+  metrics.
+* **diag4 (block resynthesis).**  One resynthesis step:
+  (a) a convex block cut from the mapped circuit;
+  (b) the parameterised template on the block's own CNOT skeleton;
+  (c) CNOT deletion with Levenberg–Marquardt re-instantiation;
+  (d) Z-slot sparsification.
+  Only existing CNOTs can disappear, so the device mapping is unchanged.
+
+*Results charts*
+* **fig1.**  Two-qubit (ECR) gate reduction relative to the input on the ten
+  IBM-Eagle-mapped benchmarks (15 min per circuit for the anytime tools).
+  Labels give HyPSO-QCO's reduction.
+* **fig2.**  Total native gate reduction relative to the input.
+* **fig3.**  Best ECR count found so far over wall-clock time.
+  * GUOQ and QUESO are sampled at 1, 5 and 15 min; TKET is shown as a
+    line.
+  * HyPSO-QCO traces are rebuilt from per-round logs.
+  * The flat start of HyPSO-QCO and of its 1-worker variant is the swarm
+    phase.
+* **fig4.**  ECR count relative to GUOQ (15 min) for HyPSO-QCO with 4
   workers, with 1 worker (compute-matched) and without the swarm phase.
   Only the full configuration was run on the three large circuits.
-* **Fig. 5.**  Search strategies on the same genome, decoder and budget
+* **fig5.**  Search strategies on the same genome, decoder and budget
   (logical suites, 3 seeds): mean reduction of the primary metric.
-* **Fig. 6.**  Component ablation of the swarm: change in mean gate
-  reduction relative to the full swarm.  Red marks components whose
-  removal is significantly worse (p < 0.05).
+* **fig6.**  Component ablation of the swarm: change in mean gate
+  reduction when one component is removed.  Blue marks components whose
+  removal is significantly worse (one-sided Wilcoxon, p < 0.05).
+* **fig7.**  Absolute number of ECR gates removed, by circuit ordered by
+  size (log scale).  HyPSO-QCO removes the most ECRs on every circuit, up
+  to 6,399 on `hubbard_18`.  GUOQ's removals collapse on the three
+  largest circuits (64, 4 and 129).
+* **fig8.**  Where HyPSO-QCO's ECR reduction arises: the share of the
+  input's ECRs removed by phase 1 (the swarm, or only the seed for the
+  three large circuits, marked *), by memetic resynthesis of the elites
+  (2a) and by deepening (2b).
+* **fig9.**  ECR count of each tool divided by HyPSO-QCO's (≥ 1 everywhere;
+  darker = more ECRs than HyPSO-QCO).
+* **fig10.**  Mean reduction over the ten circuits in four metrics: ECR,
+  total gates, physical single-qubit gates (sx + x) and depth.
+* **fig11.**  Gain in estimated success probability over the input for
+  the seven executable-size circuits.  Model: ECR error 7e-3, sx/x error
+  2.5e-4, rz free.
+* **fig12.**  Minutes until each HyPSO-QCO configuration's ECR count drops
+  below GUOQ's final 15-minute result.
+* **fig13.**  Deviation of every output from its input (log scale), with
+  the exact / numerically exact / approximate bands.  Qiskit's
+  `heisenberg_32` output, which breaks the contract (0.98), is omitted.
+  `hubbard_18` is not shown for any tool.
 
 **Other sources in the repository:**
 * `results/ibm_literature/REPORT.md`: full comparison report.

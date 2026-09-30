@@ -20,6 +20,7 @@ import numpy as np
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 os.chdir(ROOT)
 
 from qcpso.bench.report_literature import input_metrics, load_rows, v1_rows  # noqa: E402
@@ -40,8 +41,6 @@ LABEL = {
     "hypso_w1": "HyPSO-QCO (1 worker)", "hypso": "HyPSO-QCO",
 }
 RELATED = ["qiskit", "tket_mp", "queso", "guoq"]
-COLORS = {"qiskit": "#8c8c8c", "tket_mp": "#4c72b0", "queso": "#dd8452", "guoq": "#55a868", "hypso": "#c44e52",
-          "hypso_w1": "#e8a0a0", "hypso_noswarm": "#8172b3", "hypso_v1": "#937860"}
 
 
 # ----------------------------------------------------------------------------- data
@@ -291,113 +290,13 @@ def main():
     write_csv(os.path.join(DATA, "builtin_ranks.csv"), list(brank[0]), brank)
     write_csv(os.path.join(DATA, "builtin_ablation.csv"), list(babl[0]), babl)
 
-    figures(by, inp, traces, suites, bred, babl)
+    import figs
+    import diagrams
+    figs.make(dict(by=by, inp=inp, circuits=CIRCUITS, small=SMALL, val=val, red=red, traces=traces, suites=suites,
+                   bred=bred, babl=babl, phase=ph_rows, dev=dev), FIG)
+    diagrams.make(FIG)
     tables(by, dev, inp, summ, abl7, bh2h, bred, brank, babl)
     print("package written to", OUT)
-
-
-# ----------------------------------------------------------------------------- figures
-def figures(by, inp, traces, suites, bred, babl):
-    import matplotlib
-    matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
-    plt.rcParams.update({"font.size": 9, "axes.spines.top": False, "axes.spines.right": False,
-                         "savefig.bbox": "tight", "savefig.dpi": 200})
-
-    def save(fig, name):
-        fig.savefig(os.path.join(FIG, name + ".pdf"))
-        fig.savefig(os.path.join(FIG, name + ".png"))
-        plt.close(fig)
-
-    ms = RELATED + ["hypso"]
-    for key, name, ylab in (("ecr", "fig1_ecr_reduction", "ECR reduction vs input (%)"),
-                            ("gates", "fig2_total_gate_reduction", "total gate reduction vs input (%)")):
-        fig, ax = plt.subplots(figsize=(7.2, 2.8))
-        x = np.arange(len(CIRCUITS))
-        w = 0.8 / len(ms)
-        for i, m in enumerate(ms):
-            ys = [red(val(by, c, m, key), inp[c][key]) for c in CIRCUITS]
-            ax.bar(x + (i - (len(ms) - 1) / 2) * w, ys, w, label=LABEL[m], color=COLORS[m],
-                   edgecolor="black" if m == "hypso" else "none", linewidth=0.5)
-        ax.axhline(0, color="black", linewidth=0.6)
-        ax.set_xticks(x, CIRCUITS, rotation=30, ha="right")
-        ax.set_ylabel(ylab)
-        ax.legend(ncol=5, fontsize=8, frameon=False, loc="upper left", bbox_to_anchor=(0, 1.16))
-        save(fig, name)
-
-    # anytime
-    fig, axes = plt.subplots(2, 4, figsize=(7.2, 3.9))
-    for ax, c in zip(axes.flat, SMALL):
-        for m, st in (("guoq", dict(marker="o", ms=3)), ("queso", dict(marker="s", ms=3))):
-            pts, _ = traces[c][m]
-            ax.step([p[0] / 60 for p in pts], [p[1] for p in pts], where="post", color=COLORS[m], lw=1.2,
-                    label=LABEL[m], **st)
-        for m, ls in (("hypso", "-"), ("hypso_w1", "--"), ("hypso_noswarm", ":")):
-            pts, s0 = traces[c][m]
-            ts = [p[0] / 60 for p in pts] + [15.0]
-            es = [p[1] for p in pts] + [pts[-1][1]]
-            ax.step(ts, es, where="post", color=COLORS[m], lw=1.4, ls=ls, label=LABEL[m])
-        ax.axhline(val(by, c, "tket_mp", "ecr"), color=COLORS["tket_mp"], lw=0.8, ls="-.", label="TKET")
-        ax.set_title(c, fontsize=9)
-        ax.set_xlim(0, 15.3)
-        ax.tick_params(labelsize=7)
-    axes.flat[-1].axis("off")
-    h, l_ = axes.flat[0].get_legend_handles_labels()
-    axes.flat[-1].legend(h, l_, fontsize=7, frameon=False, loc="center")
-    fig.supxlabel("wall-clock time (min)", fontsize=9)
-    fig.supylabel("best ECR count so far", fontsize=9)
-    fig.tight_layout()
-    save(fig, "fig3_anytime")
-
-    # relative to GUOQ
-    fig, ax = plt.subplots(figsize=(7.2, 2.6))
-    x = np.arange(len(CIRCUITS))
-    ms2 = ["hypso", "hypso_w1", "hypso_noswarm"]
-    w = 0.26
-    for i, m in enumerate(ms2):
-        ys = [val(by, c, m, "ecr") / val(by, c, "guoq", "ecr") if val(by, c, m, "ecr") else np.nan for c in CIRCUITS]
-        ax.bar(x + (i - 1) * w, ys, w, label=LABEL[m], color=COLORS[m])
-    ax.axhline(1.0, color=COLORS["guoq"], lw=1.2, label="GUOQ (15 min) = 1")
-    ax.set_xticks(x, CIRCUITS, rotation=30, ha="right")
-    ax.set_ylabel("ECR count / GUOQ")
-    ax.set_ylim(0.5, 1.1)
-    ax.legend(ncol=4, fontsize=8, frameon=False, loc="upper left", bbox_to_anchor=(0, 1.18))
-    save(fig, "fig4_relative_to_guoq")
-
-    # search strategies on built-in suites
-    order = ["greedy", "rs", "spso", "ga", "sa", "hypso"]
-    lab = {"greedy": "greedy (no search)", "rs": "random search", "spso": "canonical PSO", "ga": "GA", "sa": "SA",
-           "hypso": "HyPSO-QCO swarm"}
-    col = {"greedy": "#bbbbbb", "rs": "#999999", "spso": "#dd8452", "ga": "#55a868", "sa": "#4c72b0",
-           "hypso": "#c44e52"}
-    fig, ax = plt.subplots(figsize=(5.0, 2.5))
-    x = np.arange(len(suites))
-    w = 0.8 / len(order)
-    for i, m in enumerate(order):
-        ys = [next(r["reduction_pct"] for r in bred if r["suite"] == s and r["method"] == m) for s, _, _ in suites]
-        ax.bar(x + (i - (len(order) - 1) / 2) * w, ys, w, label=lab[m], color=col[m])
-    ax.set_xticks(x, ["Clifford+T\n(gates)", "continuous\n(CX)", "IBM Tokyo\n(CX)"])
-    ax.set_ylabel("mean reduction (%)")
-    ax.axhline(0, color="black", lw=0.6)
-    ax.legend(fontsize=7, frameon=False, ncol=3, loc="upper left", bbox_to_anchor=(0, 1.25))
-    save(fig, "fig5_search_strategies")
-
-    # component ablation
-    names = {"hypso_novar": "no decomposition variants", "hypso_relaxed": "continuous relaxation\n(no categorical PSO)",
-             "hypso_place": "with placement genes", "hypso_noseed": "no elitist seed",
-             "hypso_spso": "SPSO only", "hypso_qpso": "QPSO only", "hypso_place_eager": "eager placement genes",
-             "hypso_unguided": "unguided local search", "hypso_gbest": "gbest topology only",
-             "hypso_nosched": "no schedule genes", "hypso_nomemetic": "no local search"}
-    full = next(a for a in babl if a["variant"] == "hypso")["gates_pct"]
-    rows = sorted([a for a in babl if a["variant"] != "hypso"], key=lambda a: a["gates_pct"] - full)
-    fig, ax = plt.subplots(figsize=(4.6, 3.0))
-    ys = [a["gates_pct"] - full for a in rows]
-    ax.barh(range(len(rows)), ys, color=["#c44e52" if a.get("wilcoxon_p", 1) < 0.05 else "#bbbbbb" for a in rows])
-    ax.set_yticks(range(len(rows)), [names.get(a["variant"], a["variant"]) for a in rows], fontsize=7)
-    ax.axvline(0, color="black", lw=0.6)
-    ax.set_xlabel("change in mean gate reduction vs full swarm (pp)\n(red: full swarm significantly better, p < 0.05)",
-                  fontsize=7)
-    save(fig, "fig6_component_ablation")
 
 
 # ----------------------------------------------------------------------------- LaTeX tables

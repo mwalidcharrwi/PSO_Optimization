@@ -8,3 +8,4 @@ results/**/circuits/
 
 results/ibm_literature/**/work/
 results/ibm_literature/logs/
+paper/figures/src/puppeteer.json
