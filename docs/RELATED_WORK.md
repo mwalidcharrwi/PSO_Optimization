@@ -153,11 +153,12 @@ tools ourselves on the exact files, under one contract:
 * the output uses native {rz, sx, x, ecr} with native ECR directions.
 
 Driver: `qcpso/bench/compare_ibm.py`; tool wrappers:
-`qcpso/bench/literature.py`.
+`qcpso/bench/literature.py`.  The supplied circuits were transpiled by
+Qiskit at optimisation level 3, so the input already is the Qiskit O3
+result and Qiskit is not compared as a separate tool.
 
 | Tool | Configuration used |
 |---|---|
-| Qiskit 2.x O3 | `generate_preset_pass_manager(3)`, basis {rz, sx, x, ecr}, directed coupling map = the input's ECR directions, trivial layout (undirected map as fallback) |
 | TKET (pytket 2.x) | Connectivity-preserving fixed point of `SynthesiseTket`, `KAKDecomposition(allow_swaps=False)` and `CliffordSimp(allow_swaps=False)`.  `FullPeepholeOptimise` is not used: its 3-qubit resynthesis can couple uncoupled qubits.  (HyPSO-QCO's own TKET pass leaves out `SynthesiseTket`, which can drop small rotations; the baseline's outputs were all verified numerically exact) |
 | QUESO (PLDI'23) | GUOQ binary with the authors' QUESO flags (`-opt TOTAL -search BEAM -temp 0 -q 8000 -resynth NONE`) + `--preserve-mapping` |
 | GUOQ (ASPLOS'25) | IBM-Eagle gate set, `-opt TWO_Q` (2q count, then total), BQSKit resynthesis, `--preserve-mapping`.  Resynthesis made coupling-aware with a small patch (`third_party/`) |
@@ -173,7 +174,6 @@ Results and discussion: `results/ibm_literature/REPORT.md`.
 
 | tool | mean ECR reduction vs input |
 |---|---:|
-| Qiskit O3 | −0.1 % |
 | QUESO | 0.1 % |
 | TKET (connectivity-preserving) | 4.1 % |
 | GUOQ | 20.2 % |
@@ -184,7 +184,7 @@ Results and discussion: `results/ibm_literature/REPORT.md`.
   GUOQ on 6 of 7.  The gain comes from its memetic resynthesis phase, not
   from the swarm (ablation in the report).
 * Rule-based optimisers that preserve the mapping barely reduce two-qubit
-  counts on these Qiskit-compiled circuits.  Only resynthesis (GUOQ,
+  counts on these Qiskit-O3-compiled circuits.  Only resynthesis (GUOQ,
   HyPSO-QCO v2) does.
 * GUOQ's advantage over rules comes from BQSKit resynthesis.  It slows
   down markedly on the 90k–360k-gate circuits (≤ 0.4 % ECR reduction on

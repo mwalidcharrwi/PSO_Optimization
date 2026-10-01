@@ -35,12 +35,13 @@ CIRCUITS = ["mult_8", "heisenberg_8", "add_17", "qae_17", "qft_16", "hubbard_8",
             "grover_10", "hubbard_18"]
 SMALL = CIRCUITS[:7]
 LABEL = {
-    "qiskit": "Qiskit O3", "tket_mp": "TKET", "queso@60": "QUESO (1 min)", "queso@300": "QUESO (5 min)",
+    "tket_mp": "TKET", "queso@60": "QUESO (1 min)", "queso@300": "QUESO (5 min)",
     "queso": "QUESO", "guoq@60": "GUOQ (1 min)", "guoq@300": "GUOQ (5 min)", "guoq": "GUOQ",
     "hypso_v1": "HyPSO-QCO v1 (swarm only)", "hypso_noswarm": "HyPSO-QCO w/o swarm phase",
     "hypso_w1": "HyPSO-QCO (1 worker)", "hypso": "HyPSO-QCO",
 }
-RELATED = ["qiskit", "tket_mp", "queso", "guoq"]
+# Qiskit O3 is not a baseline here: the supplied circuits are its output (transpiled at level 3)
+RELATED = ["tket_mp", "queso", "guoq"]
 
 
 # ----------------------------------------------------------------------------- data
@@ -313,7 +314,8 @@ def tables(by, dev, inp, summ, abl7, bh2h, bred, brank, babl):
 
     # T1 benchmarks
     L += ["\\begin{table}[t]\\centering\\small",
-          "\\caption{Benchmarks: IBM-Eagle-mapped circuits in $\\{rz, sx, x, ecr\\}$ (127-qubit device).}",
+          "\\caption{Benchmarks: circuits transpiled by Qiskit at optimisation level 3 for a 127-qubit IBM Eagle "
+          "device, in $\\{rz, sx, x, ecr\\}$.}",
           "\\label{tab:benchmarks}",
           "\\begin{tabular}{lrrrrr}\\toprule",
           "circuit & used qubits & gates & ECR & $sx{+}x$ & depth \\\\\\midrule"]
@@ -325,7 +327,7 @@ def tables(by, dev, inp, summ, abl7, bh2h, bred, brank, babl):
 
     # T2/T3 main metrics
     for key, cap, lab in (("ecr", "Two-qubit (ECR) gate count after optimisation (15\\,min per circuit for the anytime "
-                                  "tools; best in bold).", "tab:ecr"),
+                                  "tools; best in bold).  The input is Qiskit's level-3 transpilation.", "tab:ecr"),
                           ("gates", "Total native gate count after optimisation.", "tab:gates"),
                           ("oneq_phys", "Physical single-qubit gates ($sx+x$; $rz$ is virtual).", "tab:oneq"),
                           ("depth", "Circuit depth.", "tab:depth")):
@@ -382,11 +384,10 @@ def tables(by, dev, inp, summ, abl7, bh2h, bred, brank, babl):
           "\\label{tab:verification}",
           "\\begin{tabular}{lrl}\\toprule", "method & max.\\ deviation & worst circuit \\\\\\midrule"]
     for m in RELATED + ["hypso", "hypso_w1", "hypso_noswarm"]:
-        ds = [(d[0], c) for (c, mm), d in dev.items() if mm == m and not (m == "qiskit" and d[0] > 0.5)]
+        ds = [(d[0], c) for (c, mm), d in dev.items() if mm == m]
         d0, c0 = max(ds)
         L.append(f"{LABEL[m]} & {d0:.1e} & {tt(c0)} \\\\")
-    L += ["\\bottomrule\\end{tabular}", "\\\\[2pt]\\footnotesize Qiskit's output on \\texttt{heisenberg\\_32} "
-          "(undirected-map fallback) fails the same-qubit contract (deviation 0.98) and is excluded above. "
+    L += ["\\bottomrule\\end{tabular}", "\\\\[2pt]\\footnotesize "
           "\\texttt{hubbard\\_18} (31 used qubits) has no end-to-end check for any tool.",
           "\\end{table}", ""]
 

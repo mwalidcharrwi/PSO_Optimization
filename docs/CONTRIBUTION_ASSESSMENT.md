@@ -30,13 +30,14 @@ possible, so treat them as "not found in the reviewed work".
 
 ### 2.0 v2 versus related work on the supplied benchmarks
 
-Source: `results/ibm_literature` (protocol in its README).  Every tool ran
-on the same 10 mapped circuits under the same contract, with 15 minutes
+Source: `results/ibm_literature` (protocol in its README).  The 10
+supplied circuits were transpiled by Qiskit at optimisation level 3, so
+the input is the Qiskit O3 result and Qiskit is not compared separately.
+Every tool ran on the same 10 circuits under the same contract, with 15 minutes
 each for the anytime tools and one seed each.
 
 | | ECR, mean reduction vs input | total gates, mean reduction | HyPSO-QCO v2 wins (ECR) |
 |---|---:|---:|---|
-| Qiskit O3 | −0.1 % | 10.4 % | 10 / 10 |
 | TKET (connectivity-preserving) | 4.1 % | 36.2 % | 10 / 10 |
 | QUESO | 0.1 % | 33.7 % | 10 / 10 |
 | GUOQ | 20.2 % | 43.4 % | 10 / 10 |
@@ -81,8 +82,8 @@ advantage over related work.  It costs about one percentage point.**
 * The swarm helps on `mult_8` (153 vs 156 ECRs) and on total gates on 4
   circuits.  That is not enough to pay for 25 % of the budget.
 * The honest claim for v2 is therefore that the **memetic, connectivity-
-  preserving resynthesis** (C9, C10) is what beats GUOQ, QUESO, TKET and
-  Qiskit here.  The PSO formulation (C1–C3) remains the search engine of
+  preserving resynthesis** (C9, C10) is what beats GUOQ, QUESO and TKET
+  here.  The PSO formulation (C1–C3) remains the search engine of
   the `cliffordt`, `continuous` and `hardware` modes, where it is measured
   in §2.2 and §3.
 * `--resynth-share 1.0` (memetic only) is the recommended setting for
@@ -125,8 +126,8 @@ Stages:
   count below the deterministic pipeline on 8 of 10 circuits, by 1–16 ECRs
   (means).  On 7 of them it is the only component that reduces the ECR
   count at all.
-* The inputs contain a lot of removable single-qubit overhead: Qiskit O3
-  itself removes 57–62 % of the gates of `heisenberg_32` and `hubbard_18`.
+* The inputs contain a lot of removable single-qubit overhead: TKET
+  alone removes 68–76 % of the gates of `heisenberg_32` and `hubbard_18`.
   The large percentage reductions therefore partly reflect the inputs.
 
 ### 2.2 Built-in suites (logical circuits; `results/cliffordt`, `continuous`, `hardware_tokyo`, `ablation`)
@@ -200,8 +201,9 @@ compared with the gain from the formulation itself (≈ 20 %).
 
 1. **Comparison with superoptimisers is limited to what runs under the
    fixed-mapping contract.**
-   * GUOQ, QUESO, TKET (connectivity-preserving) and Qiskit O3 were run on
-     the supplied files.
+   * GUOQ, QUESO and TKET (connectivity-preserving) were run on the
+     supplied files.  Qiskit O3 is not a separate baseline: the files are
+     its output.
    * BQSKit O3 did not finish `mult_8` within 35 minutes.
    * PyZX and VOQC do not preserve connectivity.
    * Quarl needs a trained GPU model.
@@ -232,21 +234,21 @@ compared with the gain from the formulation itself (≈ 20 %).
    families, not the original benchmark files.
 7. The paper referred to in the original task was never provided, so no
    comparison with its method is possible.
-8. For `heisenberg_32` and `hubbard_18`, Qiskit O3 fails with the directed
-   coupling map and was run with an undirected map.  Its outputs there
-   violate the native ECR directions and fail the same-qubit equivalence
-   check.
+8. All supplied circuits come from one compiler (Qiskit, optimisation
+   level 3).  Other compilers' outputs may leave different room for
+   optimisation.
 9. Components with no measured benefit: C4 (provenance guidance) and C5
    (placement, off by default).  The swarm phase of v2 (C11) also has no
    measured benefit at 15 minutes (§2.0).
 
 ## 5. Bottom line
 
-**v2 against related work.**  On the supplied, already-mapped IBM circuits,
-HyPSO-QCO v2 has fewer two-qubit gates than GUOQ, QUESO, TKET and Qiskit O3
-on all 10 circuits.  The mean ECR reduction is 31.3 %, against 20.2 % for
-GUOQ, the strongest related tool.  At matched compute it wins on 6 of 7.
-All outputs are verified to be (numerically) exactly equivalent.  This
+**v2 against related work.**  The supplied IBM circuits were already
+optimised by Qiskit's level-3 transpiler.  On them, HyPSO-QCO v2 has fewer
+two-qubit gates than GUOQ, QUESO and TKET on all 10 circuits.  The mean ECR
+reduction is 31.3 %, against 20.2 % for GUOQ, the strongest related tool.
+At matched compute it wins on 6 of 7.  Every output checked end to end is
+numerically exactly equivalent; `hubbard_18` is checked block by block.  This
 advantage is due to the new memetic, connectivity-preserving block
 resynthesis (C9, C10), not to the particle swarm: an ablation without the
 swarm phase is slightly better (§2.0).

@@ -78,16 +78,15 @@ DIAGRAMS = {
   U -.->|"new positions"| G1
 """,
     "diag3_evaluation_protocol": """flowchart LR
-  B(["<b>10 IBM-Eagle-mapped circuits</b><br/>1.9k–357k gates<br/>8–32 used qubits"]):::io
+  B(["<b>10 IBM-Eagle circuits</b><br/>transpiled by Qiskit<br/>at optimisation level 3<br/>1.9k–357k gates · 8–32 used qubits"]):::io
   K{"<b>common contract</b><br/>same physical qubits<br/>only coupled pairs<br/>native ECR directions"}:::chk
   subgraph T["<b>optimisers</b> · same 4-core machine"]
     direction TB
-    T1["Qiskit O3"]:::tool
     T2["TKET, connectivity-preserving"]:::tool
     T3["QUESO · 15 min"]:::tool
     T4["GUOQ · 15 min · coupling-aware resynthesis"]:::tool
     T5["<b>HyPSO-QCO</b> · 15 min<br/>+ 1-worker and no-swarm variants"]:::p1
-    T1 ~~~ T2 ~~~ T3 ~~~ T4 ~~~ T5
+    T2 ~~~ T3 ~~~ T4 ~~~ T5
   end
   subgraph E["<b>evaluation</b> · identical for every tool"]
     direction TB

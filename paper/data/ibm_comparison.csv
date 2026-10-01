@@ -1,5 +1,4 @@
 circuit,method,label,ecr,oneq_phys,gates,depth,time_s,ecr_reduction_pct,gates_reduction_pct,coupling_ok,deviation,check,equivalence_class
-mult_8,qiskit,Qiskit O3,311,665,1958,1173,3.4,0.0,-3.16,True,4.96e-15,statevector,exact
 mult_8,tket_mp,TKET,299,511,1402,848,2.3,3.86,26.13,True,1.05e-14,statevector,exact
 mult_8,queso,QUESO,311,469,1337,811,900.0,0.0,29.56,True,1.09e-14,statevector,exact
 mult_8,guoq,GUOQ,199,413,1170,616,900.0,36.01,38.36,True,6.42e-08,statevector,numerically exact
@@ -11,7 +10,6 @@ mult_8,hypso_v1,HyPSO-QCO v1 (swarm only),309,502,1418,832,,0.64,25.29,,,,
 mult_8,hypso_w1,HyPSO-QCO (1 worker),164,313,865,488,900.3,47.27,54.43,True,1.91e-10,statevector,exact
 mult_8,hypso_noswarm,HyPSO-QCO w/o swarm phase,156,300,818,472,900.1,49.84,56.9,True,1.07e-10,statevector,exact
 mult_8,hypso,HyPSO-QCO,153,291,808,448,900.1,50.8,57.43,True,3.66e-09,statevector,numerically exact
-heisenberg_8,qiskit,Qiskit O3,420,740,2127,529,4.6,0.0,0.0,True,7.95e-15,statevector,exact
 heisenberg_8,tket_mp,TKET,420,485,1455,387,3.1,0.0,31.59,True,1.50e-14,statevector,exact
 heisenberg_8,queso,QUESO,420,330,1217,302,900.0,0.0,42.78,True,5.51e-14,statevector,exact
 heisenberg_8,guoq,GUOQ,326,549,1597,539,900.0,22.38,24.92,True,4.91e-07,statevector,numerically exact
@@ -23,7 +21,6 @@ heisenberg_8,hypso_v1,HyPSO-QCO v1 (swarm only),420,386,1312,358,,0.0,38.32,,,,
 heisenberg_8,hypso_w1,HyPSO-QCO (1 worker),283,437,1231,361,900.4,32.62,42.13,True,3.14e-09,statevector,numerically exact
 heisenberg_8,hypso_noswarm,HyPSO-QCO w/o swarm phase,266,434,1193,325,900.1,36.67,43.91,True,1.66e-08,statevector,numerically exact
 heisenberg_8,hypso,HyPSO-QCO,276,442,1229,342,900.5,34.29,42.22,True,6.75e-09,statevector,numerically exact
-add_17,qiskit,Qiskit O3,499,951,2916,1026,5.6,0.0,-3.7,True,2.14e-12,statevector,exact
 add_17,tket_mp,TKET,495,806,2203,731,3.0,0.8,21.66,True,2.13e-12,statevector,exact
 add_17,queso,QUESO,499,766,2108,699,900.0,0.0,25.04,True,2.13e-12,statevector,exact
 add_17,guoq,GUOQ,421,682,1980,735,900.0,15.63,29.59,True,4.71e-08,statevector,numerically exact
@@ -35,7 +32,6 @@ add_17,hypso_v1,HyPSO-QCO v1 (swarm only),491,798,2193,720,,1.6,22.01,,,,
 add_17,hypso_w1,HyPSO-QCO (1 worker),407,651,1792,588,900.8,18.44,36.27,True,2.08e-10,statevector,exact
 add_17,hypso_noswarm,HyPSO-QCO w/o swarm phase,389,599,1677,546,900.8,22.04,40.36,True,3.81e-11,statevector,exact
 add_17,hypso,HyPSO-QCO,390,606,1662,524,900.4,21.84,40.9,True,1.50e-10,statevector,exact
-qae_17,qiskit,Qiskit O3,541,1003,3085,1080,5.3,0.0,-1.71,True,1.71e-10,statevector,exact
 qae_17,tket_mp,TKET,537,873,2368,777,3.3,0.74,21.93,True,9.71e-10,statevector,exact
 qae_17,queso,QUESO,541,836,2301,747,900.0,0.0,24.13,True,9.71e-10,statevector,exact
 qae_17,guoq,GUOQ,428,706,2057,649,900.0,20.89,32.18,True,6.55e-08,statevector,numerically exact
@@ -47,7 +43,6 @@ qae_17,hypso_v1,HyPSO-QCO v1 (swarm only),527,882,2412,779,,2.59,20.47,,,,
 qae_17,hypso_w1,HyPSO-QCO (1 worker),427,756,2027,595,900.8,21.07,33.17,True,2.87e-09,statevector,numerically exact
 qae_17,hypso_noswarm,HyPSO-QCO w/o swarm phase,413,682,1890,550,900.6,23.66,37.69,True,4.66e-09,statevector,numerically exact
 qae_17,hypso,HyPSO-QCO,420,686,1860,547,900.4,22.37,38.67,True,8.04e-09,statevector,numerically exact
-qft_16,qiskit,Qiskit O3,614,1136,3505,1025,7.2,0.0,-1.77,True,1.34e-11,statevector,exact
 qft_16,tket_mp,TKET,610,969,2651,727,3.2,0.65,23.03,True,2.26e-09,statevector,numerically exact
 qft_16,queso,QUESO,614,999,2691,728,900.0,0.0,21.86,True,2.26e-09,statevector,numerically exact
 qft_16,guoq,GUOQ,536,891,2568,827,900.0,12.7,25.44,True,5.39e-06,statevector,approximate
@@ -59,7 +54,6 @@ qft_16,hypso_v1,HyPSO-QCO v1 (swarm only),604,982,2677,713,,1.63,22.27,,,,
 qft_16,hypso_w1,HyPSO-QCO (1 worker),541,823,2296,644,900.8,11.89,33.33,True,2.76e-09,statevector,numerically exact
 qft_16,hypso_noswarm,HyPSO-QCO w/o swarm phase,519,786,2202,585,900.8,15.47,36.06,True,5.70e-08,statevector,numerically exact
 qft_16,hypso,HyPSO-QCO,519,768,2144,575,900.9,15.47,37.75,True,2.27e-09,statevector,numerically exact
-hubbard_8,qiskit,Qiskit O3,1344,2638,8070,4388,14.5,0.0,0.68,True,9.39e-15,statevector,exact
 hubbard_8,tket_mp,TKET,1251,1889,5174,2852,11.9,6.92,36.32,True,6.83e-14,statevector,exact
 hubbard_8,queso,QUESO,1336,2320,6204,3275,900.0,0.6,23.64,True,2.76e-14,statevector,exact
 hubbard_8,guoq,GUOQ,1165,1747,4972,2654,900.0,13.32,38.81,True,8.04e-08,statevector,numerically exact
@@ -71,7 +65,6 @@ hubbard_8,hypso_v1,HyPSO-QCO v1 (swarm only),1334,2223,6002,3175,,0.74,26.13,,,,
 hubbard_8,hypso_w1,HyPSO-QCO (1 worker),968,1420,4065,2091,905.5,27.98,49.97,True,4.45e-09,statevector,numerically exact
 hubbard_8,hypso_noswarm,HyPSO-QCO w/o swarm phase,915,1267,3646,1922,901.1,31.92,55.13,True,1.39e-08,statevector,numerically exact
 hubbard_8,hypso,HyPSO-QCO,930,1373,3898,1996,904.3,30.8,52.02,True,4.38e-09,statevector,numerically exact
-hhl_8,qiskit,Qiskit O3,2377,6946,19083,11175,22.6,0.0,-5.05,True,2.67e-14,statevector,exact
 hhl_8,tket_mp,TKET,2365,5496,14780,9282,19.7,0.5,18.63,True,9.17e-14,statevector,exact
 hhl_8,queso,QUESO,2377,5921,16069,9252,900.0,0.0,11.54,True,7.92e-14,statevector,exact
 hhl_8,guoq,GUOQ,500,1032,2803,1770,900.0,78.97,84.57,True,1.96e-08,statevector,numerically exact
@@ -83,7 +76,6 @@ hhl_8,hypso_v1,HyPSO-QCO v1 (swarm only),2375,5734,15390,9000,,0.08,15.28,,,,
 hhl_8,hypso_w1,HyPSO-QCO (1 worker),329,653,1756,1168,900.7,86.16,90.33,True,4.85e-10,statevector,exact
 hhl_8,hypso_noswarm,HyPSO-QCO w/o swarm phase,275,572,1528,1008,900.9,88.43,91.59,True,3.38e-09,statevector,numerically exact
 hhl_8,hypso,HyPSO-QCO,337,679,1811,1215,903.4,85.82,90.03,True,4.94e-10,statevector,exact
-heisenberg_32,qiskit,Qiskit O3,4024,7857,22592,3430,35.5,-2.08,61.61,False,9.84e-01,choi-mps,approximate
 heisenberg_32,tket_mp,TKET,3834,5142,14100,2297,29.5,2.74,76.04,True,3.51e-09,choi-mps,numerically exact
 heisenberg_32,queso,QUESO,3942,5305,14544,2412,900.0,0.0,75.29,True,3.81e-09,choi-mps,numerically exact
 heisenberg_32,guoq,GUOQ,3878,5375,14700,2580,900.0,1.62,75.02,True,3.28e-09,choi-mps,numerically exact
@@ -93,7 +85,6 @@ heisenberg_32,queso@60,QUESO (1 min),3942,5305,14544,2412,60.0,0.0,75.29,True,3.
 heisenberg_32,queso@300,QUESO (5 min),3942,5305,14544,2412,300.0,0.0,75.29,True,3.81e-09,choi-mps,numerically exact
 heisenberg_32,hypso_v1,HyPSO-QCO v1 (swarm only),3882,5353,14740,2422,,1.52,74.95,,,,
 heisenberg_32,hypso,HyPSO-QCO,3328,4547,12657,2089,904.2,15.58,78.49,True,1.61e-10,choi-mps,exact
-grover_10,qiskit,Qiskit O3,16397,31199,93315,44073,238.2,0.0,-0.09,True,9.06e-12,statevector,exact
 grover_10,tket_mp,TKET,14453,20737,57497,32145,243.0,11.86,38.33,True,8.43e-13,statevector,exact
 grover_10,queso,QUESO,16397,28182,74687,35477,900.0,0.0,19.89,True,8.15e-13,statevector,exact
 grover_10,guoq,GUOQ,16393,27236,73279,35093,900.0,0.02,21.4,True,6.16e-10,statevector,exact
@@ -103,7 +94,6 @@ grover_10,queso@60,QUESO (1 min),16397,28182,74687,35477,60.0,0.0,19.89,True,8.1
 grover_10,queso@300,QUESO (5 min),16397,28182,74687,35477,300.0,0.0,19.89,True,8.15e-13,statevector,exact
 grover_10,hypso_v1,HyPSO-QCO v1 (swarm only),16395,26710,71485,34216,,0.01,23.33,,,,
 grover_10,hypso,HyPSO-QCO,13543,14932,48187,28941,925.9,17.41,48.32,True,2.86e-08,statevector,numerically exact
-hubbard_18,qiskit,Qiskit O3,33456,53254,153652,64708,402.0,1.48,57.02,False,,,
 hubbard_18,tket_mp,TKET,29547,41731,112902,45927,244.2,12.99,68.42,True,,,
 hubbard_18,queso,QUESO,33926,48653,131273,56476,900.0,0.09,63.28,True,,,
 hubbard_18,guoq,GUOQ,33829,48581,131025,56316,900.0,0.38,63.35,True,,,

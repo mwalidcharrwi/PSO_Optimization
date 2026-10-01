@@ -34,8 +34,10 @@ source of truth for a research paper.
      best swarm solutions.  It deletes CNOTs **only inside each block's own
      CNOT skeleton**, so the device mapping cannot change.
 3. **Main result.**  On the 10 supplied benchmark circuits, HyPSO-QCO has
-   the fewest two-qubit gates on **all 10**, against Qiskit O3, TKET, QUESO
-   and GUOQ (Wilcoxon p = 0.001 against each).
+   the fewest two-qubit gates on **all 10**, against TKET, QUESO and GUOQ
+   (Wilcoxon p = 0.001 against each).  The inputs are already the output of
+   Qiskit's level-3 transpiler, so every reduction comes on top of Qiskit
+   O3.
    * Mean ECR reduction: 31.3 %.  The best related tool, GUOQ, reaches
      20.2 %.
    * Mean total-gate reduction: 55.6 % (GUOQ: 43.4 %).
@@ -63,9 +65,10 @@ source of truth for a research paper.
 
 ## 2. Problem setting
 
-* **Input.**  A circuit already laid out and routed for a 127-qubit
-  IBM-Eagle device, in {rz, sx, x, ecr}.  Every ECR acts on a coupled pair,
-  in the device's native direction.
+* **Input.**  A circuit already transpiled by Qiskit at optimisation
+  level 3 for a 127-qubit IBM-Eagle device, in {rz, sx, x, ecr}: laid out,
+  routed and optimised.  Every ECR acts on a coupled pair, in the device's
+  native direction.
 * **Output contract** (applied to every method):
   1. unitary equivalence up to a global phase, **on the same physical
      qubits** (no relabelling, no final permutation);
@@ -300,9 +303,11 @@ Novelty statements are relative to the reviewed literature (§11).  They are
 | grover_10 | 10 | 93,235 | 16,397 | 31,156 | 43,923 |
 | hubbard_18 | 31 | 357,535 | 33,958 | 116,414 | 136,644 |
 
-* All circuits are on a 127-qubit IBM-Eagle coupling map.  "Used qubits"
-  counts the qubits the circuit touches.  `hubbard_18` touches 31 physical
-  qubits.
+* All circuits were transpiled by Qiskit at optimisation level 3 for a
+  127-qubit IBM-Eagle coupling map.  "Used qubits" counts the qubits the
+  circuit touches.  `hubbard_18` touches 31 physical qubits.
+* **Qiskit O3 is therefore not a separate baseline.**  The input column is
+  Qiskit O3's result; every reduction reported below is relative to it.
 * None of these files appears in the published evaluation suites of the
   related tools, so every tool was run here.
 
@@ -310,7 +315,6 @@ Novelty statements are relative to the reviewed literature (§11).  They are
 
 | method | version / configuration |
 |---|---|
-| Qiskit O3 | Qiskit 2.5.2, `generate_preset_pass_manager(3)`, basis {rz, sx, x, ecr}, directed coupling map = input's ECR directions, trivial layout.  It failed on `heisenberg_32` and `hubbard_18` and was re-run with an undirected map, which breaks the contract (see §6.6). |
 | TKET | pytket 2.18.4; fixed point of `SynthesiseTket`, `KAKDecomposition(allow_swaps=False)` and `CliffordSimp(allow_swaps=False)`.  `FullPeepholeOptimise` is not used: it can couple uncoupled qubits. |
 | QUESO (PLDI'23) | GUOQ binary (commit 8c4c3a5) with the authors' QUESO flags `-opt TOTAL -search BEAM -temp 0 -q 8000 -resynth NONE`, plus `--preserve-mapping`; 900 s |
 | GUOQ (ASPLOS'25) | commit 8c4c3a5, `-g IBMN -opt TWO_Q -resynth BQSKIT --preserve-mapping`, BQSKit 1.2.1; 900 s, snapshots at 60 s and 300 s.  A small patch makes its BQSKit resynthesis connectivity-aware; without it GUOQ cannot return a valid circuit under this contract.  The patch only restricts GUOQ. |
@@ -337,8 +341,8 @@ lowering that HyPSO-QCO uses, so ECR counts equal their CX counts.
     about 2 cores.
   * HyPSO-QCO runs ran alone.
 * **Budget:** 15 minutes wall-clock per circuit for every anytime tool,
-  including HyPSO-QCO's decoding and native conversion.  Qiskit and TKET
-  run to completion (2–402 s).
+  including HyPSO-QCO's decoding and native conversion.  TKET runs to
+  completion (2–244 s).
 * **Seeds:** one seed per method and circuit.
 * **Statistics:** per-circuit wins/ties/losses and one-sided Wilcoxon
   signed-rank tests (n = 10; the minimum attainable p is 0.001).
@@ -360,47 +364,48 @@ Figures: `paper/figures/` (diagrams `diag1`–`diag4`, charts `fig1`–`fig13`; 
 
 **Table A: ECR count** (fewer is better; `tab:ecr`, Fig. 1)
 
-| circuit | input | Qiskit O3 | TKET | QUESO | GUOQ | HyPSO-QCO v1 | **HyPSO-QCO** | margin vs best other |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| mult_8 | 311 | 311 | 299 | 311 | 199 | 309 | **153** | −23.1 % (GUOQ) |
-| heisenberg_8 | 420 | 420 | 420 | 420 | 326 | 420 | **276** | −15.3 % (GUOQ) |
-| add_17 | 499 | 499 | 495 | 499 | 421 | 491 | **390** | −7.4 % (GUOQ) |
-| qae_17 | 541 | 541 | 537 | 541 | 428 | 527 | **420** | −1.9 % (GUOQ) |
-| qft_16 | 614 | 614 | 610 | 614 | 536 | 604 | **519** | −3.2 % (GUOQ) |
-| hubbard_8 | 1,344 | 1,344 | 1,251 | 1,336 | 1,165 | 1,334 | **930** | −20.2 % (GUOQ) |
-| hhl_8 | 2,377 | 2,377 | 2,365 | 2,377 | 500 | 2,375 | **337** | −32.6 % (GUOQ) |
-| heisenberg_32 | 3,942 | 4,024‡ | 3,834 | 3,942 | 3,878 | 3,882 | **3,328** | −13.2 % (TKET) |
-| grover_10 | 16,397 | 16,397 | 14,453 | 16,397 | 16,393 | 16,395 | **13,543** | −6.3 % (TKET) |
-| hubbard_18 | 33,958 | 33,456‡ | 29,547 | 33,926 | 33,829 | 30,415 | **27,559** | −6.7 % (TKET) |
-| **mean reduction** | | −0.1 % | 4.1 % | 0.1 % | 20.2 % | 1.9 % | **31.3 %** | |
-| geo-mean ratio to input | | 1.001 | 0.958 | 0.999 | 0.744 | 0.980 | **0.626** | |
+| circuit | input (Qiskit O3) | TKET | QUESO | GUOQ | HyPSO-QCO v1 | **HyPSO-QCO** | margin vs best other |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| mult_8 | 311 | 299 | 311 | 199 | 309 | **153** | −23.1 % (GUOQ) |
+| heisenberg_8 | 420 | 420 | 420 | 326 | 420 | **276** | −15.3 % (GUOQ) |
+| add_17 | 499 | 495 | 499 | 421 | 491 | **390** | −7.4 % (GUOQ) |
+| qae_17 | 541 | 537 | 541 | 428 | 527 | **420** | −1.9 % (GUOQ) |
+| qft_16 | 614 | 610 | 614 | 536 | 604 | **519** | −3.2 % (GUOQ) |
+| hubbard_8 | 1,344 | 1,251 | 1,336 | 1,165 | 1,334 | **930** | −20.2 % (GUOQ) |
+| hhl_8 | 2,377 | 2,365 | 2,377 | 500 | 2,375 | **337** | −32.6 % (GUOQ) |
+| heisenberg_32 | 3,942 | 3,834 | 3,942 | 3,878 | 3,882 | **3,328** | −13.2 % (TKET) |
+| grover_10 | 16,397 | 14,453 | 16,397 | 16,393 | 16,395 | **13,543** | −6.3 % (TKET) |
+| hubbard_18 | 33,958 | 29,547 | 33,926 | 33,829 | 30,415 | **27,559** | −6.7 % (TKET) |
+| **mean reduction** | | 4.1 % | 0.1 % | 20.2 % | 1.9 % | **31.3 %** | |
+| geo-mean ratio to input | | 0.958 | 0.999 | 0.744 | 0.980 | **0.626** | |
 
-‡ Undirected-map fallback: this output violates the contract.
+The input column is Qiskit O3's output (the circuits were supplied
+transpiled at optimisation level 3).
 
 **Table B: other metrics, mean reduction vs input over 10 circuits**
 (`summary_stats.csv`)
 
-| metric | Qiskit O3 | TKET | QUESO | GUOQ | v1 | **HyPSO-QCO** |
-|---|---:|---:|---:|---:|---:|---:|
-| ECR | −0.1 % | 4.1 % | 0.1 % | 20.2 % | 1.9 % | **31.3 %** |
-| total gates | 10.4 % | 36.2 % | 33.7 % | 43.4 % | 33.0 % | **55.6 %** |
-| physical 1q (sx + x) | 9.5 % | 30.5 % | 28.5 % | 39.5 % | 27.7 % | **52.2 %** |
-| depth | 9.1 % | 34.4 % | 34.2 % | 39.4 % | 33.3 % | **55.2 %** |
+| metric | TKET | QUESO | GUOQ | v1 | **HyPSO-QCO** |
+|---|---:|---:|---:|---:|---:|
+| ECR | 4.1 % | 0.1 % | 20.2 % | 1.9 % | **31.3 %** |
+| total gates | 36.2 % | 33.7 % | 43.4 % | 33.0 % | **55.6 %** |
+| physical 1q (sx + x) | 30.5 % | 28.5 % | 39.5 % | 27.7 % | **52.2 %** |
+| depth | 34.4 % | 34.2 % | 39.4 % | 33.3 % | **55.2 %** |
 
 **Table C: total gates per circuit** (`tab:gates`, Fig. 2)
 
-| circuit | input | Qiskit O3 | TKET | QUESO | GUOQ | **HyPSO-QCO** |
-|---|---:|---:|---:|---:|---:|---:|
-| mult_8 | 1,898 | 1,958 | 1,402 | 1,337 | 1,170 | **808** |
-| heisenberg_8 | 2,127 | 2,127 | 1,455 | **1,217** | 1,597 | 1,229 |
-| add_17 | 2,812 | 2,916 | 2,203 | 2,108 | 1,980 | **1,662** |
-| qae_17 | 3,033 | 3,085 | 2,368 | 2,301 | 2,057 | **1,860** |
-| qft_16 | 3,444 | 3,505 | 2,651 | 2,691 | 2,568 | **2,144** |
-| hubbard_8 | 8,125 | 8,070 | 5,174 | 6,204 | 4,972 | **3,898** |
-| hhl_8 | 18,165 | 19,083 | 14,780 | 16,069 | 2,803 | **1,811** |
-| heisenberg_32 | 58,848 | 22,592 | 14,100 | 14,544 | 14,700 | **12,657** |
-| grover_10 | 93,235 | 93,315 | 57,497 | 74,687 | 73,279 | **48,187** |
-| hubbard_18 | 357,535 | 153,652 | 112,902 | 131,273 | 131,025 | **105,965** |
+| circuit | input (Qiskit O3) | TKET | QUESO | GUOQ | **HyPSO-QCO** |
+|---|---:|---:|---:|---:|---:|
+| mult_8 | 1,898 | 1,402 | 1,337 | 1,170 | **808** |
+| heisenberg_8 | 2,127 | 1,455 | **1,217** | 1,597 | 1,229 |
+| add_17 | 2,812 | 2,203 | 2,108 | 1,980 | **1,662** |
+| qae_17 | 3,033 | 2,368 | 2,301 | 2,057 | **1,860** |
+| qft_16 | 3,444 | 2,651 | 2,691 | 2,568 | **2,144** |
+| hubbard_8 | 8,125 | 5,174 | 6,204 | 4,972 | **3,898** |
+| hhl_8 | 18,165 | 14,780 | 16,069 | 2,803 | **1,811** |
+| heisenberg_32 | 58,848 | 14,100 | 14,544 | 14,700 | **12,657** |
+| grover_10 | 93,235 | 57,497 | 74,687 | 73,279 | **48,187** |
+| hubbard_18 | 357,535 | 112,902 | 131,273 | 131,025 | **105,965** |
 
 **Physical single-qubit gates and depth.**
 * HyPSO-QCO is lowest on 9 of 10 circuits for both.
@@ -412,7 +417,6 @@ Figures: `paper/figures/` (diagrams `diag1`–`diag4`, charts `fig1`–`fig13`; 
 
 | HyPSO-QCO vs | ECR W/T/L | p | total gates W/T/L | p |
 |---|---|---:|---|---:|
-| Qiskit O3 | 10/0/0 | 0.001 | 10/0/0 | 0.001 |
 | TKET | 10/0/0 | 0.001 | 10/0/0 | 0.001 |
 | QUESO | 10/0/0 | 0.001 | 9/0/1 | 0.002 |
 | GUOQ | 10/0/0 | 0.001 | 10/0/0 | 0.001 |
@@ -438,10 +442,12 @@ The last three circuits are far too deep for current hardware.  They are
 scalability tests, not candidates for execution.
 
 **Observations for the discussion.**
-* **Rule-based tools barely help here.**  Tools that preserve the mapping
-  (Qiskit, TKET, QUESO) barely reduce two-qubit gates on these
-  Qiskit-compiled circuits.  Only resynthesis (GUOQ, HyPSO-QCO) does.
-  QUESO removes single-qubit gates but no ECRs.
+* **Rule-based tools barely help here.**  The inputs have already been
+  through Qiskit's level-3 optimisation.  Rewrite-based tools that preserve
+  the mapping then remove few ECRs: QUESO at most 0.6 % on any circuit,
+  TKET at most 0.8 % on 5 of the 10 circuits (2.7–13.0 % on the other 5).
+  Only resynthesis (GUOQ, HyPSO-QCO) removes many.  QUESO removes
+  single-qubit gates but almost no ECRs.
 * **GUOQ stalls on the large circuits.**  It reaches ≤ 0.4 % ECR reduction
   on the 90k–360k-gate circuits (`grover_10`, `hubbard_18`) in 15 minutes.
   There TKET is the best related tool.
@@ -579,6 +585,10 @@ HyPSO-QCO vs each method as W/T/L (one-sided Wilcoxon p)**
 | PyZX | −13.9 % | 18/0/0 (4e-6) | −48.4 % | 11/0/0 (5e-4) | – | – |
 | **HyPSO-QCO swarm** | **35.0 %** | – | **21.9 %** | – | **6.8 %** | – |
 
+Qiskit O3, TKET and PyZX are valid baselines here: these suites are
+logical circuits that each tool compiles from scratch.  This differs from
+the supplied IBM circuits, which are already Qiskit O3's output.
+
 * **Average ranks** (Friedman p ≤ 2e-7 on each suite):
   * Clifford+T: HyPSO 2.11 = SA 2.11 < GA 2.67 < canonical PSO 3.67;
   * continuous: HyPSO 2.45 < GA 2.86 < SA 3.00 < canonical PSO 4.36;
@@ -648,7 +658,6 @@ HyPSO-QCO vs each method as W/T/L (one-sided Wilcoxon p)**
 
 | method | largest deviation over checked outputs | class |
 |---|---:|---|
-| Qiskit O3 | 1.7e-10 (`qae_17`) | exact |
 | TKET | 3.5e-9 (`heisenberg_32`) | numerically exact |
 | QUESO | 3.8e-9 (`heisenberg_32`) | numerically exact |
 | GUOQ | **5.4e-6** (`qft_16`); otherwise ≤ 4.9e-7 | approximate on `qft_16` |
@@ -656,10 +665,6 @@ HyPSO-QCO vs each method as W/T/L (one-sided Wilcoxon p)**
 | HyPSO-QCO, 1 worker | 4.4e-9 | numerically exact |
 | HyPSO-QCO w/o swarm | 5.7e-8 (`qft_16`) | numerically exact |
 
-* **Qiskit fallback outputs fail the contract.**  Qiskit's two
-  undirected-map outputs (`heisenberg_32`, `hubbard_18`) put ECRs in
-  non-native directions.  On `heisenberg_32` its output deviates from the
-  input on the same qubits by 0.98.
 * **`hubbard_18` has no end-to-end check for any tool.**  At 31 used
   qubits and up to 357k gates, the MPS miter's bond dimension grows too
   large: an end-to-end check was stopped after 90 minutes at 44 % of the
@@ -714,8 +719,9 @@ HyPSO-QCO vs each method as W/T/L (one-sided Wilcoxon p)**
    files.
 6. **Verification gap:** no end-to-end check of `hubbard_18` for any tool
    (§6.6).
-7. **Benchmark set:** 10 circuits from one device family, all compiled by
-   Qiskit.  The built-in logical suites are reconstructions of standard
+7. **Benchmark set:** 10 circuits from one device family, all transpiled
+   by Qiskit at optimisation level 3; other compilers' outputs may leave
+   different room for optimisation.  The built-in logical suites are reconstructions of standard
    families, not the original files.
 8. **Estimated success probability** is a simple product-of-errors model,
    not a hardware run.
@@ -731,8 +737,9 @@ HyPSO-QCO vs each method as W/T/L (one-sided Wilcoxon p)**
   1. a memetic PSO framework whose particles encode decisions of a sound
      compiler (exact candidates, scalable);
   2. a connectivity-preserving resynthesis operator for mapped circuits;
-  3. on IBM-mapped benchmarks, fewer two-qubit gates than Qiskit, TKET,
-     QUESO and GUOQ on 10/10 circuits under a strict, verified contract;
+  3. on IBM benchmarks already optimised by Qiskit's level-3 transpiler,
+     fewer two-qubit gates than TKET, QUESO and GUOQ on 10/10 circuits
+     under a strict, verified contract;
   4. on logical circuits, the PSO formulation (categorical PSO +
      decomposition variants) significantly beats canonical PSO and ties
      GA/SA.
@@ -788,10 +795,11 @@ HyPSO-QCO vs each method as W/T/L (one-sided Wilcoxon p)**
 > thousands of gates. A memetic phase refines the best candidates by
 > connectivity-preserving numerical resynthesis: it deletes CNOTs only
 > inside each block's own CNOT skeleton, so the device mapping cannot
-> change. On ten IBM-Eagle-mapped benchmark circuits (up to 357k gates),
-> under a strict same-qubit, same-coupling contract and a 15-minute budget,
-> HyPSO-QCO uses fewer two-qubit gates than Qiskit, TKET, QUESO and GUOQ on
-> every circuit, reducing the ECR count by 31.3 % on average (GUOQ: 20.2 %)
+> change. On ten benchmark circuits already transpiled for an IBM Eagle
+> device by Qiskit at optimisation level 3 (up to 357k gates), under a
+> strict same-qubit, same-coupling contract and a 15-minute budget,
+> HyPSO-QCO uses fewer two-qubit gates than TKET, QUESO and GUOQ on every
+> circuit, reducing the ECR count by a further 31.3 % on average (GUOQ: 20.2 %)
 > and the total gate count by 55.6 % (GUOQ: 43.4 %). All outputs are
 > verified to be numerically exact (deviation ≤ 5.7e-8), except the
 > largest one, which is verified block by block. An ablation shows
@@ -889,7 +897,7 @@ without access to a bibliography database.)
 | `build_package.py` | regenerates everything above from `results/` |
 
 **Suggested figure captions** (all figures share one colour system:
-HyPSO-QCO blue, GUOQ orange, TKET green, QUESO yellow, Qiskit pink;
+HyPSO-QCO blue, GUOQ orange, TKET green, QUESO yellow;
 HyPSO-QCO variants and pipeline stages in shades of blue):
 
 *Method diagrams*
@@ -903,7 +911,8 @@ HyPSO-QCO variants and pipeline stages in shades of blue):
   runs the chosen passes, cleans up and re-synthesises native gates.
   Categorical PSO updates one probability vector per gene.
 * **diag3 (evaluation protocol).**  Every optimiser receives the same
-  mapped circuits under one contract.  Outputs are converted back to native
+  circuits, already transpiled by Qiskit at optimisation level 3, under
+  one contract.  Outputs are converted back to native
   gates the same way, checked for equivalence and measured with the same
   metrics.
 * **diag4 (block resynthesis).**  One resynthesis step:
@@ -914,9 +923,11 @@ HyPSO-QCO variants and pipeline stages in shades of blue):
   Only existing CNOTs can disappear, so the device mapping is unchanged.
 
 *Results charts*
-* **fig1.**  Two-qubit (ECR) gate reduction relative to the input on the ten
-  IBM-Eagle-mapped benchmarks (15 min per circuit for the anytime tools).
-  Labels give HyPSO-QCO's reduction.
+* **fig1.**  Two-qubit (ECR) gate reduction relative to the input (the
+  Qiskit level-3 transpilation) on the ten IBM-Eagle benchmarks (15 min per
+  circuit for the anytime tools).  Labels give HyPSO-QCO's reduction.
+  QUESO's bars are near zero: it removes at most 0.6 % of the ECRs on any
+  circuit.
 * **fig2.**  Total native gate reduction relative to the input.
 * **fig3.**  Best ECR count found so far over wall-clock time.
   * GUOQ and QUESO are sampled at 1, 5 and 15 min; TKET is shown as a
@@ -950,9 +961,8 @@ HyPSO-QCO variants and pipeline stages in shades of blue):
 * **fig12.**  Minutes until each HyPSO-QCO configuration's ECR count drops
   below GUOQ's final 15-minute result.
 * **fig13.**  Deviation of every output from its input (log scale), with
-  the exact / numerically exact / approximate bands.  Qiskit's
-  `heisenberg_32` output, which breaks the contract (0.98), is omitted.
-  `hubbard_18` is not shown for any tool.
+  the exact / numerically exact / approximate bands.  `hubbard_18` is not
+  shown for any tool.
 
 **Other sources in the repository:**
 * `results/ibm_literature/REPORT.md`: full comparison report.

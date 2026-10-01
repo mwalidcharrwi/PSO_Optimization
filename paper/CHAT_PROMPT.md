@@ -35,7 +35,7 @@ I attached the complete results package of our framework HyPSO-QCO:
 
 GOAL
 Write a complete, submission-quality paper that presents the strengths of HyPSO-QCO convincingly and accurately. The headline strengths, all verified in the brief:
-(1) the fewest two-qubit (ECR) gates on all 10 IBM-mapped benchmarks against Qiskit O3, TKET, QUESO and GUOQ (Wilcoxon p = 0.001 against each); mean ECR reduction 31.3 % vs 20.2 % for GUOQ; 55.6 % fewer total gates vs 43.4 %;
+(1) on 10 IBM-Eagle benchmarks that were already transpiled by Qiskit at optimisation level 3, the fewest two-qubit (ECR) gates on all 10 against TKET, QUESO and GUOQ (Wilcoxon p = 0.001 against each); every reduction comes on top of Qiskit O3; mean ECR reduction 31.3 % vs 20.2 % for GUOQ; 55.6 % fewer total gates vs 43.4 %;
 (2) a strict, fair contract: the same physical qubits, only coupled pairs, native directions, the same 15-minute budget and machine, a compute-matched 1-worker run, and equivalence checking of every output (end to end for all circuits except hubbard_18, whose HyPSO-QCO output was checked block by block);
 (3) scalability to 357k-gate circuits, where GUOQ stalls;
 (4) anytime behaviour: on the 7 smaller circuits HyPSO-QCO passes GUOQ's final 15-minute result after 4.6–12.4 minutes;
@@ -52,7 +52,8 @@ NON-NEGOTIABLE RULES
    - one seed per method, a 15-minute budget, a patched GUOQ, and the losses listed in §7.
 3. Do not claim a comparison with any paper that is not in the brief. Cite only works listed in brief §11 (plus standard textbooks if needed). Give BibTeX entries with the fields you are sure of, and mark every uncertain field with "% VERIFY". Never fabricate DOIs, page numbers or arXiv IDs.
 4. Use the names exactly: HyPSO-QCO; ECR (the IBM two-qubit gate); phase 1 = swarm, phase 2 = memetic resynthesis (2a elites, 2b deepening).
-5. Style: formal, concise, quantitative. Present tense for the method, past tense for the experiments. No hype words ("revolutionary", "unprecedented"). Each result paragraph opens with a one-sentence finding in bold, followed by the evidence.
+5. Qiskit O3 is NOT a baseline on the supplied circuits: they are the output of Qiskit's level-3 transpiler, so the "input" column is the Qiskit O3 result. Say this once in the setup and frame the gains as "beyond Qiskit O3". Do not add a Qiskit O3 column or row to any supplied-circuit table or figure. (Qiskit O3 does appear in tab:search, the logical-suite table; that is correct, because those circuits are logical, not transpiled.)
+6. Style: formal, concise, quantitative. Present tense for the method, past tense for the experiments. No hype words ("revolutionary", "unprecedented"). Each result paragraph opens with a one-sentence finding in bold, followed by the evidence.
 
 PAPER STRUCTURE (all sections required)
 - Title (propose 3 options), abstract (≤ 250 words), index terms.
@@ -68,7 +69,7 @@ PAPER STRUCTURE (all sections required)
   - 5.5 soundness: state as propositions, with short proofs, that (i) every phase-1 candidate is equivalent by construction and (ii) phase 2 can never introduce a new qubit interaction; describe the run-time safety nets;
   - 5.6 complexity and parameters (brief §3.5).
   Include Algorithm 1 (HyPSO-QCO main loop) and Algorithm 2 (one memetic round) in algorithm2e or algorithmic pseudo-code.
-- 6 Experimental setup (diag3, tab:benchmarks): benchmarks, compared tools and configurations, protocol and machine, metrics, verification, statistics, and the list of research questions RQ1–RQ6.
+- 6 Experimental setup (diag3, tab:benchmarks): benchmarks (already transpiled by Qiskit at optimisation level 3, hence no separate Qiskit baseline), compared tools (TKET, QUESO, GUOQ) and configurations, protocol and machine, metrics, verification, statistics, and the list of research questions RQ1–RQ6.
 - 7 Results, one subsection per RQ:
   - RQ1 comparison with related work: tab:ecr, tab:gates, tab:stats, fig1, fig2, fig9, fig10, fig7, fig11;
   - RQ2 compute-matched: tab:ablation, fig4;
@@ -85,9 +86,9 @@ PAPER STRUCTURE (all sections required)
 FIGURES AND TABLES
 - Use all four diagrams and all thirteen charts: \includegraphics{figures/<name>.pdf}. Wide figures (diag1, diag2, diag3, diag4, fig1, fig2, fig3, fig4, fig7) go in figure* environments; the others fit one column. Start from the captions in brief §12, making them self-contained.
 - Also create in TikZ:
-  (a) a compact "contribution at a glance" figure for page 1: mapped circuit → HyPSO-QCO (phase 1 swarm, phase 2 memetic) → result, with the headline numbers 31.3 % vs 20.2 % ECR reduction and 10/10 wins;
+  (a) a compact "contribution at a glance" figure for page 1: Qiskit-O3-transpiled circuit → HyPSO-QCO (phase 1 swarm, phase 2 memetic) → result, with the headline numbers 31.3 % vs 20.2 % ECR reduction and 10/10 wins;
   (b) a native TikZ version of diag1, so it can be edited in LaTeX.
-  Keep the colour scheme: HyPSO-QCO blue #2a78d6, GUOQ orange #eb6834, TKET green #1baf7a, QUESO yellow #eda100, Qiskit pink #e87ba4.
+  Keep the colour scheme: HyPSO-QCO blue #2a78d6, GUOQ orange #eb6834, TKET green #1baf7a, QUESO yellow #eda100.
 - \input{tables.tex} and refer to the existing labels; do not retype the tables.
 - If you think another chart would strengthen the paper, describe it (data source in the CSVs, chart type, message) and give matplotlib code that uses only the attached CSVs. Do not draw charts from numbers you did not read from the files.
 

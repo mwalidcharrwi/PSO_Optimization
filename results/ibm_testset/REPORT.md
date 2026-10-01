@@ -10,11 +10,9 @@ use only {rz, sx, x, ecr}, and every ECR stays on an original coupled pair in
 the input's native direction; this was checked for every saved circuit.
 
 **Methods** (same objective: ECR count, then total gates, then depth).
-* *Qiskit O3*: `optimization_level=3` with basis {rz, sx, x, ecr}, the input's
-  directed coupling map and a trivial layout.  For `heisenberg_32` and
-  `hubbard_18` Qiskit raised a TranspilerError (it creates an ECR in the
-  non-native direction and cannot flip it).  It was re-run with an
-  undirected coupling map, a relaxation in Qiskit's favour.
+* The inputs were transpiled by Qiskit at optimisation level 3, so the
+  input column is the Qiskit O3 result; Qiskit O3 is not a separate
+  baseline.
 * *greedy*: the deterministic HyPSO-QCO pipeline with default decisions (no swarm).
 * *standard PSO*: canonical gbest PSO over the same genome and decoder.
 * *GA*, *SA*: genetic algorithm and simulated annealing over the same genome,
@@ -53,13 +51,11 @@ inputs.
 
 ## Headline
 
-* **Two-qubit gates:** HyPSO-QCO never uses more ECRs than the input or
-  Qiskit O3, and uses strictly fewer on 9/10 circuits.  The largest saving is
-  `hubbard_18`: 33,958 → 30,415 ECRs (−10.4 %), where Qiskit O3 reaches
-  33,456.
+* **Two-qubit gates:** HyPSO-QCO never uses more ECRs than the input (the
+  Qiskit O3 transpilation), and uses strictly fewer on 9/10 circuits.  The
+  largest saving is `hubbard_18`: 33,958 → 30,415 ECRs (−10.4 %).
 * **Total native gates:** −15 % to −75 % vs. the input on every circuit
-  (median about −24 %).  Qiskit O3 re-optimisation changes the inputs by
-  −62 % to +5 %.  **Depth:** −15 % to −66 %.
+  (median about −24 %).  **Depth:** −15 % to −66 %.
 * **Where the gain comes from** (`breakdown.json`,
   [docs/CONTRIBUTION_ASSESSMENT.md](../../docs/CONTRIBUTION_ASSESSMENT.md)):
   * the deterministic native re-synthesis alone gives a median −20 % of gates;
@@ -78,105 +74,95 @@ inputs.
 
 ### Two-qubit (ECR) gate count (mean over seeds; best in bold)
 
-| circuit | used qubits | input | Qiskit O3 | greedy (no swarm) | standard PSO | GA | SA | HyPSO-QCO | HyPSO vs input |
-|---|---|---|---|---|---|---|---|---|---|
-| mult_8 | 8 | 311 | 311 | 311 | 309.7 | **309** | 310.3 | **309** | −0.64 % |
-| heisenberg_8 | 8 | 420 | **420** | **420** | **420** | **420** | **420** | **420** | −0.00 % |
-| add_17 | 17 | 499 | 499 | 499 | 494 | 497.3 | 497.3 | **493.7** | −1.07 % |
-| qae_17 | 17 | 541 | 541 | 541 | **528.7** | 534.3 | 539.3 | 530 | −2.03 % |
-| qft_16 | 16 | 614 | 614 | 614 | 607.7 | 609.3 | 613.7 | **606.7** | −1.19 % |
-| hubbard_8 | 8 | 1344 | 1344 | 1344 | 1338 | 1340.3 | 1342.3 | **1335.3** | −0.64 % |
-| hhl_8 | 8 | 2377 | 2377 | 2377 | 2377 | **2376** | 2377 | **2376** | −0.04 % |
-| heisenberg_32 | 32 | 3942 | 4024 | **3882** | **3882** | **3882** | **3882** | **3882** | −1.52 % |
-| grover_10 | 10 | 16397 | 16397 | 16397 | – | – | – | **16395** | −0.01 % |
-| hubbard_18 | 31 | 33958 | 33456 | 30431 | – | – | – | **30415** | −10.43 % |
+| circuit | used qubits | input | greedy (no swarm) | standard PSO | GA | SA | HyPSO-QCO | HyPSO vs input |
+|---|---|---|---|---|---|---|---|---|
+| mult_8 | 8 | 311 | 311 | 309.7 | **309** | 310.3 | **309** | −0.64 % |
+| heisenberg_8 | 8 | 420 | **420** | **420** | **420** | **420** | **420** | −0.00 % |
+| add_17 | 17 | 499 | 499 | 494 | 497.3 | 497.3 | **493.7** | −1.07 % |
+| qae_17 | 17 | 541 | 541 | **528.7** | 534.3 | 539.3 | 530 | −2.03 % |
+| qft_16 | 16 | 614 | 614 | 607.7 | 609.3 | 613.7 | **606.7** | −1.19 % |
+| hubbard_8 | 8 | 1344 | 1344 | 1338 | 1340.3 | 1342.3 | **1335.3** | −0.64 % |
+| hhl_8 | 8 | 2377 | 2377 | 2377 | **2376** | 2377 | **2376** | −0.04 % |
+| heisenberg_32 | 32 | 3942 | **3882** | **3882** | **3882** | **3882** | **3882** | −1.52 % |
+| grover_10 | 10 | 16397 | 16397 | – | – | – | **16395** | −0.01 % |
+| hubbard_18 | 31 | 33958 | 30431 | – | – | – | **30415** | −10.43 % |
 
 ### Total native gate count (mean over seeds; best in bold)
 
-| circuit | used qubits | input | Qiskit O3 | greedy (no swarm) | standard PSO | GA | SA | HyPSO-QCO | HyPSO vs input |
-|---|---|---|---|---|---|---|---|---|---|
-| mult_8 | 8 | 1898 | 1958 | 1532 | 1452.7 | **1419.3** | 1463.7 | 1427.7 | −24.78 % |
-| heisenberg_8 | 8 | 2127 | 2127 | 1461 | 1348 | **1324.7** | 1371 | 1325.3 | −37.69 % |
-| add_17 | 17 | 2812 | 2916 | 2268 | 2211 | **2184.3** | 2217.7 | 2196 | −21.91 % |
-| qae_17 | 17 | 3033 | 3085 | 2467 | 2412 | **2393.3** | 2400.7 | 2398.7 | −20.91 % |
-| qft_16 | 16 | 3444 | 3505 | 2752 | 2701.3 | **2668** | 2698.3 | 2668.3 | −22.52 % |
-| hubbard_8 | 8 | 8125 | 8070 | 6144 | 5928 | **5904.7** | 6104.7 | 5956 | −26.70 % |
-| hhl_8 | 8 | 18165 | 19083 | 15670 | 15412 | **15392.5** | 15659.5 | 15401.5 | −15.21 % |
-| heisenberg_32 | 32 | 58848 | 22592 | 14855 | 14746 | 14765 | 14851 | **14740** | −74.95 % |
-| grover_10 | 10 | 93235 | 93315 | 73444 | – | – | – | **71485** | −23.33 % |
-| hubbard_18 | 31 | 357535 | 153652 | 140941 | – | – | – | **135134** | −62.20 % |
+| circuit | used qubits | input | greedy (no swarm) | standard PSO | GA | SA | HyPSO-QCO | HyPSO vs input |
+|---|---|---|---|---|---|---|---|---|
+| mult_8 | 8 | 1898 | 1532 | 1452.7 | **1419.3** | 1463.7 | 1427.7 | −24.78 % |
+| heisenberg_8 | 8 | 2127 | 1461 | 1348 | **1324.7** | 1371 | 1325.3 | −37.69 % |
+| add_17 | 17 | 2812 | 2268 | 2211 | **2184.3** | 2217.7 | 2196 | −21.91 % |
+| qae_17 | 17 | 3033 | 2467 | 2412 | **2393.3** | 2400.7 | 2398.7 | −20.91 % |
+| qft_16 | 16 | 3444 | 2752 | 2701.3 | **2668** | 2698.3 | 2668.3 | −22.52 % |
+| hubbard_8 | 8 | 8125 | 6144 | 5928 | **5904.7** | 6104.7 | 5956 | −26.70 % |
+| hhl_8 | 8 | 18165 | 15670 | 15412 | **15392.5** | 15659.5 | 15401.5 | −15.21 % |
+| heisenberg_32 | 32 | 58848 | 14855 | 14746 | 14765 | 14851 | **14740** | −74.95 % |
+| grover_10 | 10 | 93235 | 73444 | – | – | – | **71485** | −23.33 % |
+| hubbard_18 | 31 | 357535 | 140941 | – | – | – | **135134** | −62.20 % |
 
 ### Circuit depth (mean over seeds; best in bold)
 
-| circuit | used qubits | input | Qiskit O3 | greedy (no swarm) | standard PSO | GA | SA | HyPSO-QCO | HyPSO vs input |
-|---|---|---|---|---|---|---|---|---|---|
-| mult_8 | 8 | 1138 | 1173 | 869 | 854.7 | **833.7** | 845.7 | 840.7 | −26.13 % |
-| heisenberg_8 | 8 | 529 | 529 | 386 | 362 | **359** | 372.7 | 360.3 | −31.88 % |
-| add_17 | 17 | 1003 | 1026 | 745 | 734.3 | **722** | 733 | 730 | −27.22 % |
-| qae_17 | 17 | 1066 | 1080 | 792 | **770.3** | 777.3 | 779.7 | 777 | −27.11 % |
-| qft_16 | 16 | 1009 | 1025 | 727 | 719.7 | 717.3 | 725.3 | **716** | −29.04 % |
-| hubbard_8 | 8 | 4400 | 4388 | 3245 | 3169.3 | **3151** | 3238.7 | 3176 | −27.82 % |
-| hhl_8 | 8 | 10641 | 11175 | **8914** | 9017 | 9000 | 8920 | 9014.5 | −15.29 % |
-| heisenberg_32 | 32 | 7143 | 3430 | 2457 | 2428 | 2427 | 2451 | **2422** | −66.09 % |
-| grover_10 | 10 | 43923 | 44073 | **33578** | – | – | – | 34216 | −22.10 % |
-| hubbard_18 | 31 | 136644 | 64708 | 59671 | – | – | – | **57219** | −58.13 % |
+| circuit | used qubits | input | greedy (no swarm) | standard PSO | GA | SA | HyPSO-QCO | HyPSO vs input |
+|---|---|---|---|---|---|---|---|---|
+| mult_8 | 8 | 1138 | 869 | 854.7 | **833.7** | 845.7 | 840.7 | −26.13 % |
+| heisenberg_8 | 8 | 529 | 386 | 362 | **359** | 372.7 | 360.3 | −31.88 % |
+| add_17 | 17 | 1003 | 745 | 734.3 | **722** | 733 | 730 | −27.22 % |
+| qae_17 | 17 | 1066 | 792 | **770.3** | 777.3 | 779.7 | 777 | −27.11 % |
+| qft_16 | 16 | 1009 | 727 | 719.7 | 717.3 | 725.3 | **716** | −29.04 % |
+| hubbard_8 | 8 | 4400 | 3245 | 3169.3 | **3151** | 3238.7 | 3176 | −27.82 % |
+| hhl_8 | 8 | 10641 | **8914** | 9017 | 9000 | 8920 | 9014.5 | −15.29 % |
+| heisenberg_32 | 32 | 7143 | 2457 | 2428 | 2427 | 2451 | **2422** | −66.09 % |
+| grover_10 | 10 | 43923 | **33578** | – | – | – | 34216 | −22.10 % |
+| hubbard_18 | 31 | 136644 | 59671 | – | – | – | **57219** | −58.13 % |
 
 ### Runs, budgets and verification
 
 | circuit | method | seeds | mean time (s) | equivalence |
 |---|---|---|---|---|
-| mult_8 | Qiskit O3 | 1 | 3 | verified |
 | mult_8 | greedy (no swarm) | 1 | 1 | verified |
 | mult_8 | standard PSO | 3 | 286 | verified |
 | mult_8 | GA | 3 | 188 | verified |
 | mult_8 | SA | 3 | 144 | verified |
 | mult_8 | HyPSO-QCO | 3 | 305 | verified |
-| heisenberg_8 | Qiskit O3 | 1 | 5 | verified |
 | heisenberg_8 | greedy (no swarm) | 1 | 1 | verified |
 | heisenberg_8 | standard PSO | 3 | 421 | verified |
 | heisenberg_8 | GA | 3 | 222 | verified |
 | heisenberg_8 | SA | 3 | 201 | verified |
 | heisenberg_8 | HyPSO-QCO | 3 | 373 | verified |
-| add_17 | Qiskit O3 | 1 | 6 | verified |
 | add_17 | greedy (no swarm) | 1 | 1 | verified |
 | add_17 | standard PSO | 3 | 813 | verified |
 | add_17 | GA | 3 | 398 | verified |
 | add_17 | SA | 3 | 294 | verified |
 | add_17 | HyPSO-QCO | 3 | 636 | verified |
-| qae_17 | Qiskit O3 | 1 | 6 | verified |
 | qae_17 | greedy (no swarm) | 1 | 2 | verified |
 | qae_17 | standard PSO | 3 | 624 | verified |
 | qae_17 | GA | 3 | 492 | verified |
 | qae_17 | SA | 3 | 261 | verified |
 | qae_17 | HyPSO-QCO | 3 | 898 | verified |
-| qft_16 | Qiskit O3 | 1 | 6 | verified |
 | qft_16 | greedy (no swarm) | 1 | 2 | verified |
 | qft_16 | standard PSO | 3 | 541 | verified |
 | qft_16 | GA | 3 | 422 | verified |
 | qft_16 | SA | 3 | 339 | verified |
 | qft_16 | HyPSO-QCO | 3 | 745 | verified |
-| hubbard_8 | Qiskit O3 | 1 | 11 | verified |
 | hubbard_8 | greedy (no swarm) | 1 | 10 | verified |
 | hubbard_8 | standard PSO | 3 | 1287 | verified |
 | hubbard_8 | GA | 3 | 999 | verified |
 | hubbard_8 | SA | 3 | 680 | verified |
 | hubbard_8 | HyPSO-QCO | 3 | 1940 | verified |
-| hhl_8 | Qiskit O3 | 1 | 20 | verified |
 | hhl_8 | greedy (no swarm) | 1 | 7 | verified |
 | hhl_8 | standard PSO | 2 | 813 | verified |
 | hhl_8 | GA | 2 | 779 | verified |
 | hhl_8 | SA | 2 | 640 | verified |
 | hhl_8 | HyPSO-QCO | 2 | 837 | verified |
-| heisenberg_32 | Qiskit O3 | 1 | 30 | unchecked |
 | heisenberg_32 | greedy (no swarm) | 1 | 31 | unchecked |
 | heisenberg_32 | standard PSO | 1 | 613 | unchecked |
 | heisenberg_32 | GA | 1 | 621 | unchecked |
 | heisenberg_32 | SA | 1 | 481 | unchecked |
 | heisenberg_32 | HyPSO-QCO | 1 | 1320 | unchecked |
-| grover_10 | Qiskit O3 | 1 | 257 | verified |
 | grover_10 | greedy (no swarm) | 1 | 149 | verified |
 | grover_10 | HyPSO-QCO | 1 | 2817 | verified |
-| hubbard_18 | Qiskit O3 | 1 | 283 | unchecked |
 | hubbard_18 | greedy (no swarm) | 1 | 549 | unchecked |
 | hubbard_18 | HyPSO-QCO | 1 | 11219 | unchecked |
 

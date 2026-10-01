@@ -17,7 +17,8 @@ from collections import defaultdict
 
 import numpy as np
 
-ORDER = ["qiskit", "tket_mp", "bqskit", "queso", "guoq@60", "guoq@300", "guoq", "hypso_v1", "hypso_noswarm",
+# Qiskit O3 is left out: the supplied circuits were produced by its level-3 transpiler.
+ORDER = ["tket_mp", "bqskit", "queso", "guoq@60", "guoq@300", "guoq", "hypso_v1", "hypso_noswarm",
          "hypso_nosparse", "hypso_w1", "hypso"]
 LABEL = {
     "qiskit": "Qiskit O3", "tket_mp": "TKET (conn.-preserving)", "bqskit": "BQSKit O3", "queso": "QUESO (15 min)",

@@ -24,7 +24,7 @@ counts are measured the same way for every method.
 
 | folder | method | budget | notes |
 |---|---|---|---|
-| `deterministic/` | Qiskit 2.x `optimization_level=3` | – | directed coupling map = the input's ECR directions, trivial layout.  If Qiskit fails, an undirected map is used: this happened for `heisenberg_32` and `hubbard_18`, and some ECRs there are in the non-native direction ("coupling VIOLATED" in the report) |
+| `deterministic/` | (Qiskit 2.x `optimization_level=3`) | – | **not part of the comparison**: the supplied circuits were produced by Qiskit's level-3 transpiler, so the input already is the Qiskit O3 result.  The re-run outputs are kept in `deterministic/` for reference only and are excluded from all reports, tables and figures |
 | `deterministic/` | TKET, connectivity-preserving | – | fixed point of `SynthesiseTket`, `KAKDecomposition(allow_swaps=False)` and `CliffordSimp(allow_swaps=False)` |
 | `queso/` | QUESO (PLDI'23) | 900 s | GUOQ binary, `-opt TOTAL -search BEAM -temp 0 -q 8000 -resynth NONE --preserve-mapping` |
 | `guoq/` | GUOQ (ASPLOS'25) | 900 s, snapshots 60 s / 300 s | `-g IBMN -opt TWO_Q -resynth BQSKIT --preserve-mapping`; coupling-aware BQSKit resynthesis (patch in `third_party/`) |
@@ -67,7 +67,7 @@ numerically exact, otherwise approximate.
 export PYTHONPATH=. OMP_NUM_THREADS=1 GUOQ_DIR=/path/to/patched/guoq     # see third_party/README.md
 python -m qcpso.bench.compare_ibm --out results/ibm_literature/guoq  --methods guoq  --time-limit 900 --snapshots 60,300 --port 8091
 python -m qcpso.bench.compare_ibm --out results/ibm_literature/queso --methods queso --time-limit 900 --snapshots 60,300
-python -m qcpso.bench.compare_ibm --out results/ibm_literature/deterministic --methods tket_mp,qiskit
+python -m qcpso.bench.compare_ibm --out results/ibm_literature/deterministic --methods tket_mp
 scripts/run_ibm_literature.sh                                   # HyPSO-QCO v2, 1-worker variant, ablation
 python -m qcpso.bench.verify_literature results/ibm_literature --large
 python -m qcpso.bench.report_literature results/ibm_literature > results/ibm_literature/REPORT_TABLES.md

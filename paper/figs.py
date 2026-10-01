@@ -2,7 +2,8 @@
 
 One visual system for every figure:
 * categorical colours in the validated fixed order (dataviz reference palette):
-  HyPSO-QCO blue, GUOQ orange, TKET aqua, QUESO yellow, Qiskit magenta;
+  HyPSO-QCO blue, GUOQ orange, TKET aqua, QUESO yellow (Qiskit O3 is not compared: the
+  supplied circuits are its output);
   grouped bars follow that order so that neighbouring bars stay CVD-separable;
 * HyPSO-QCO variants and pipeline stages use one-hue (blue) ordinal steps;
 * thin marks, 1 px surface gaps between bars, hairline grid, text in ink colours.
@@ -14,12 +15,12 @@ import os
 
 import numpy as np
 
-PAL = {"hypso": "#2a78d6", "guoq": "#eb6834", "tket_mp": "#1baf7a", "queso": "#eda100", "qiskit": "#e87ba4",
+PAL = {"hypso": "#2a78d6", "guoq": "#eb6834", "tket_mp": "#1baf7a", "queso": "#eda100",
        "hypso_w1": "#86b6ef", "hypso_noswarm": "#1c5cab", "hypso_v1": "#c3c2b7"}
 STAGE = ["#86b6ef", "#3987e5", "#1c5cab"]          # ordinal blue ramp (validated --ordinal)
 INK, INK2, MUTED, GRID, AXIS, REST = "#0b0b0b", "#52514e", "#898781", "#e1e0d9", "#c3c2b7", "#d9d8d2"
-TOOLS = ["qiskit", "queso", "tket_mp", "guoq", "hypso"]   # bar order = validated adjacency
-NAME = {"qiskit": "Qiskit O3", "queso": "QUESO", "tket_mp": "TKET", "guoq": "GUOQ", "hypso": "HyPSO-QCO",
+TOOLS = ["queso", "tket_mp", "guoq", "hypso"]   # bar order = validated adjacency
+NAME = {"queso": "QUESO", "tket_mp": "TKET", "guoq": "GUOQ", "hypso": "HyPSO-QCO",
         "hypso_w1": "HyPSO-QCO, 1 worker", "hypso_noswarm": "HyPSO-QCO w/o swarm phase",
         "hypso_v1": "HyPSO-QCO v1"}
 
@@ -214,7 +215,7 @@ def make(ctx, fig_dir):
     save(fig, "fig8_phase_breakdown")
 
     # ---- fig9: win matrix (ECR relative to HyPSO-QCO) -------------------------------------------
-    cols = ["qiskit", "queso", "tket_mp", "guoq", "hypso_v1", "hypso"]
+    cols = ["queso", "tket_mp", "guoq", "hypso_v1", "hypso"]
     mat = np.array([[val(by, c, m, "ecr") / val(by, c, "hypso", "ecr") for m in cols] for c in circuits])
     from matplotlib.colors import LinearSegmentedColormap
     cmap = LinearSegmentedColormap.from_list("blue", ["#f4f8fe", "#cde2fb", "#86b6ef", "#3987e5", "#1c5cab",
@@ -319,7 +320,7 @@ def make(ctx, fig_dir):
     ax.axvspan(1e-9, 1e-6, color="#fbfbf9", zorder=0)
     rng = np.random.default_rng(0)
     for yi, m in enumerate(rows):
-        ds = [d[0] for (c, mm), d in dev.items() if mm == m and d[0] < 0.5]
+        ds = [d[0] for (c, mm), d in dev.items() if mm == m]
         jit = rng.uniform(-0.18, 0.18, len(ds))
         ax.scatter(np.maximum(ds, 1e-16), yi + jit, s=22, color=PAL[m], edgecolor="white", linewidth=0.6, zorder=3)
         ax.text(max(ds) * 2.2, yi, f"max {max(ds):.1e}", va="center", fontsize=6.5, color=INK2)
