@@ -72,7 +72,8 @@ def run_hypso(orig, time_limit, seed, workers, overrides=None):
     res = optimize(orig, cfg)
     info = {"swarm": res.info.get("swarm_metrics", {}), "evals": res.evals,
             "memetic": [(kind, j, [(r, round(tt, 1), list(c)) for r, tt, c in h])
-                        for kind, j, h in res.info.get("memetic_history", [])]}
+                        for kind, j, h in res.info.get("memetic_history", [])],
+            "lineage": res.info.get("lineage"), "tket_blocks": res.info.get("tket_blocks")}
     return res.circuit, time.time() - t, info
 
 
@@ -82,6 +83,9 @@ HYPSO_VARIANTS = {
     "hypso_noresynth": dict(resynth=False),                       # swarm phase only (v1 + TKET pass)
     "hypso_nosparse": dict(resynth_sparse=False),                 # no Z-slot sparsification
     "hypso_w1": dict(resynth_workers=1),                          # compute-matched: one resynthesis worker
+    # revision: resynthesis-only, pre-specified as the configuration for mapped circuits
+    "hypso_rs": dict(resynth_share=1.0, elites=1),
+    "hypso_rs_nosparse": dict(resynth_share=1.0, elites=1, resynth_sparse=False),   # Z-slot sparsification off
 }
 
 
@@ -145,6 +149,36 @@ def main(argv=None):
                             rows.append(_row(orig, name, label, seed, tt, tt, out,
                                              "" if ok else "violates coupling"))
                             outs[label] = out
+                    elif method == "tket_guoq":
+                        # TKET first, then GUOQ on TKET's output.  "tket_guoq" gets the same total budget
+                        # as every anytime tool (TKET time + GUOQ time = time limit); "tket_guoq_full"
+                        # additionally gives GUOQ the whole time limit after TKET (favours the baseline).
+                        from . import literature as L
+                        t_start = time.time()
+                        tk_out, tk_ok, t_tk = L.run_tket_mp(orig)
+                        if not tk_ok:
+                            raise RuntimeError("TKET output violates the coupling contract")
+                        wd = os.path.join(args.out, "work", f"{name}_{method}_s{seed}")
+                        os.makedirs(os.path.dirname(wd), exist_ok=True)
+                        matched = max(1.0, args.time_limit - t_tk)
+                        with L.ResynthServer(args.port, True, log=wd + "_server.log"):
+                            res = L.run_guoq(tk_out, wd, args.time_limit, [matched], "guoq", args.port, seed)
+                        outs = {}
+                        for tt, (out, ok) in sorted(res.items()):
+                            label = "tket_guoq" if tt < args.time_limit else "tket_guoq_full"
+                            rows.append(_row(orig, name, label, seed, round(t_tk + tt, 1), t_tk + tt, out,
+                                             ("" if ok else "violates coupling") + f" tket {t_tk:.1f}s"))
+                            outs[label] = out
+                    elif method.startswith("bqskit_del"):   # bqskit_del (level 1) / bqskit_del2 (level 2)
+                        from . import literature as L
+                        lvl = int(method[len("bqskit_del"):] or 1)
+                        logp = os.path.join(args.out, f"{name}_{method}_s{seed}.log")
+                        with open(logp, "w") as lg:
+                            out, ok, dt, extra = L.run_bqskit_deletion(orig, args.time_limit, args.workers,
+                                                                       level=lvl, log=lg)
+                        rows.append(_row(orig, name, method, seed, args.time_limit, dt, out,
+                                         "" if ok else "violates coupling"))
+                        outs = {method: out}
                     elif method == "bqskit":
                         from . import literature as L
                         out, ok, dt = L.run_bqskit(orig, level=3, seed=seed, workers=args.workers)

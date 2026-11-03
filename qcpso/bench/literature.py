@@ -218,6 +218,81 @@ def run_bqskit(circ: Circuit, level: int = 3, epsilon: float = 1e-8, seed: int =
     return nat, ok, dt
 
 
+def run_bqskit_deletion(circ: Circuit, time_limit: float = 900.0, workers: int = 4, block_size: int = 3,
+                        level: int = 1, epsilon: float = 1e-8, chunk: int = 3000, log=None):
+    """BQSKit's deletion-only workflow (``build_gate_deletion_optimization_workflow``:
+    partition into ``block_size``-qubit blocks, ``ScanningGateRemovalPass`` per
+    block, unfold) under a wall-clock budget.
+
+    Deleting gates can never couple a new qubit pair, so the output respects the
+    mapping by construction.  Single-qubit runs are first fused into U3 gates, so
+    that every remaining gate can be re-instantiated.  BQSKit has no time limit,
+    so the circuit is processed in chunks of ``chunk`` gates on one compiler with
+    ``workers`` workers; sweeps over all chunks repeat (with shifted chunk
+    boundaries) while the gate count still drops and time is left.  A chunk that
+    is unfinished at the deadline is cancelled and kept unchanged.
+
+    Returns ``(native circuit, respects_mapping, seconds, info)``."""
+    from bqskit.compiler import Compiler
+    from bqskit.compiler.compile import build_gate_deletion_optimization_workflow
+    from bqskit.compiler.status import CompilationStatus
+    from bqskit.ir.lang.qasm2 import OPENQASM2Language
+    from ..pipeline import finish
+    t0 = time.time()
+    deadline = t0 + time_limit
+    small, used = compact(finish(to_cx(circ), "continuous"))   # {u3, cx}, single-qubit runs fused
+    workflow = build_gate_deletion_optimization_workflow(level, epsilon, block_size)
+    lang = OPENQASM2Language()
+    gates = list(small.gates)
+    info = dict(sweeps=0, chunks_done=0, chunks_cancelled=0, cx_start=small.cx_count(), level=level,
+                block_size=block_size)
+
+    def say(msg):
+        if log:
+            print(f"[bqskit-del {time.time() - t0:6.0f}s] {msg}", file=log, flush=True)
+
+    with Compiler(num_workers=workers) as compiler:
+        offset = 0
+        while time.time() < deadline:
+            before = (sum(1 for g in gates if g.name == "cx"), len(gates))
+            out, cancelled = [], False
+            bounds = list(range(0, len(gates), chunk))
+            if offset and len(gates) > chunk:
+                bounds = [0] + list(range(offset, len(gates), chunk))
+            bounds.append(len(gates))
+            for lo, hi in zip(bounds[:-1], bounds[1:]):
+                part = gates[lo:hi]
+                if cancelled or time.time() >= deadline or not part:
+                    out.extend(part)
+                    continue
+                bc = lang.decode(_qasm(Circuit(small.n_qubits, part)))
+                tid = compiler.submit(bc, workflow)
+                while compiler.status(tid) != CompilationStatus.DONE:
+                    if time.time() >= deadline:
+                        compiler.cancel(tid)
+                        cancelled = True
+                        break
+                    time.sleep(0.2)
+                if cancelled:
+                    info["chunks_cancelled"] += 1
+                    out.extend(part)
+                    continue
+                res = parse_qasm(compiler.result(tid).to("qasm"))
+                out.extend(finish(Circuit(small.n_qubits, res.gates), "continuous").gates)
+                info["chunks_done"] += 1
+            gates = out
+            info["sweeps"] += 1
+            after = (sum(1 for g in gates if g.name == "cx"), len(gates))
+            say(f"sweep {info['sweeps']}: cx {before[0]} -> {after[0]}, gates {before[1]} -> {after[1]}"
+                f"{' (deadline)' if cancelled else ''}")
+            if cancelled or after >= before:
+                break
+            offset = chunk // 2 if not offset else 0
+    dt = time.time() - t0
+    nat, ok = back_to_native(Circuit(small.n_qubits, gates), used, circ)
+    return nat, ok, dt, info
+
+
 # --------------------------------------------------------------------------- #
 # TKET (connectivity preserving)
 # --------------------------------------------------------------------------- #

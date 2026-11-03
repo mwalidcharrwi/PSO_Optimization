@@ -513,6 +513,7 @@ def optimize(circ: Circuit, cfg: HyPSOConfig | None = None, **overrides) -> Opti
             cands = problem.elites(max(1, cfg.elites)) or [res.best_x]
             if cfg.time_limit is None:
                 cands = cands[:1]
+            lineage: dict = dict(blocks=0, eps_sum=0.0, eps_max=0.0, rounds=0, source="swarm")
             for j, xe in enumerate(cands):
                 if left() is not None and left() <= 1:
                     break
@@ -520,22 +521,26 @@ def optimize(circ: Circuit, cfg: HyPSOConfig | None = None, **overrides) -> Opti
                 if cfg.verbose:
                     print(f"[hypso] memetic on elite {j} from {time.time() - t0:.1f}s", flush=True)
                 tl = None if left() is None else max(1.0, left())
+                lin_j: dict = {}
                 out, hist = memetic_resynthesis(start, problem.native_dirs, problem.obj_fn, time_limit=tl,
                                                 rounds=cfg.resynth_evals, workers=cfg.resynth_workers,
                                                 seed=cfg.pso.seed + j, max_qubits=cfg.resynth_qubits,
                                                 verbose=cfg.verbose, stop_on_stall=True,
-                                                sparse=cfg.resynth_sparse)
+                                                sparse=cfg.resynth_sparse, lineage=lin_j)
                 memetic_history.append(("elite", j, hist))
                 if problem.cost_of(out) < problem.cost_of(best):
                     best = out
+                    lineage = dict(lin_j, source=f"elite {j}")
             if left() is not None and left() > 1:
+                lin_d = dict(lineage)
                 out, hist = memetic_resynthesis(to_cx(best), problem.native_dirs, problem.obj_fn,
                                                 time_limit=left(), workers=cfg.resynth_workers,
                                                 seed=cfg.pso.seed + 101, max_qubits=cfg.deepen_qubits,
-                                                verbose=cfg.verbose, sparse=cfg.resynth_sparse)
+                                                verbose=cfg.verbose, sparse=cfg.resynth_sparse, lineage=lin_d)
                 memetic_history.append(("deepen", 0, hist))
                 if problem.cost_of(out) < problem.cost_of(best):
                     best = out
+                    lineage = dict(lin_d, source=lineage.get("source", "") + " + deepen")
     finally:
         problem.close()
     best.meta = dict(circ.meta)
@@ -543,7 +548,10 @@ def optimize(circ: Circuit, cfg: HyPSOConfig | None = None, **overrides) -> Opti
         best.meta["measure"] = info["measure_map"]
     if memetic:
         info = dict(info, swarm_metrics=swarm_metrics, memetic_history=memetic_history,
-                    swarm_skipped=bool(large))
+                    swarm_skipped=bool(large), lineage=lineage if memetic else None)
+        if large and cfg.external_passes:
+            from .passes import tket_bridge
+            info["tket_blocks"] = list(tket_bridge.LAST_BLOCKS)
     verified = verify(circ, best, info) if cfg.verify else None
     lowered = problem.lowerer.lower(circ)
     return OptimizeResult(best, metrics(best), metrics(circ), metrics(lowered), metrics(greedy_circ),

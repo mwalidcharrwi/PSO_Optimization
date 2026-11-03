@@ -597,6 +597,7 @@ def resynthesize(circ: Circuit, max_qubits: int = 3, min_cx: int = 3, seed: int 
             _BLOCK_CACHE[key] = r if r is not None else args[4]  # failure: remember the restarts used
     repl = []
     saved = rejected = 0
+    eps_sum = eps_max = 0.0   # spectral-norm bounds of the accepted replacements (Proposition 1(c))
     for qubits, idx, key, ncx in meta:
         r = _BLOCK_CACHE.get(key)
         if not isinstance(r, tuple):
@@ -616,8 +617,13 @@ def resynthesize(circ: Circuit, max_qubits: int = 3, min_cx: int = 3, seed: int 
             continue
         saved += ncx - len(new_cxs)
         repl.append((idx, new_gates))
+        # ||U - e^{i phi} V||_2 <= ||U - e^{i phi} V||_F = sqrt(2^n) * err
+        eps = err * math.sqrt(2 ** len(qubits))
+        eps_sum += eps
+        eps_max = max(eps_max, eps)
     if stats is not None:
-        stats.update(blocks=len(blocks), tried=len(meta), computed=len(jobs), saved=saved, rejected=rejected)
+        stats.update(blocks=len(blocks), tried=len(meta), computed=len(jobs), saved=saved, rejected=rejected,
+                     accepted=len(repl), eps_sum=eps_sum, eps_max=eps_max)
     if not repl:
         return circ
     return rebuild(circ, repl)

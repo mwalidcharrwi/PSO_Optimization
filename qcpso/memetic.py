@@ -44,19 +44,28 @@ def _round_ok(old: Circuit, new: Circuit) -> bool:
 def memetic_resynthesis(circ: Circuit, native_dirs, objective, time_limit: float | None = None,
                         rounds: int = 0, workers: int = 4, seed: int = 0, max_qubits: int = 3,
                         verbose: bool = False, stop_on_stall: bool = False,
-                        min_qubits: int = 2, sparse: bool = True) -> tuple[Circuit, list]:
+                        min_qubits: int = 2, sparse: bool = True,
+                        lineage: dict | None = None) -> tuple[Circuit, list]:
     """Refine a {1q, cx} circuit; returns (best native circuit, history).
 
     ``objective`` maps a metrics dict to a comparable cost.  Stops at
     ``time_limit`` seconds, after ``rounds`` rounds (if > 0), or when every
     strategy has failed twice in a row (without a limit, or if
-    ``stop_on_stall``)."""
+    ``stop_on_stall``).
+
+    ``lineage`` (in/out) counts the accepted block replacements behind the
+    returned circuit and the sum / maximum of their spectral-norm error bounds
+    (Proposition 1(c)); pass the counts of the starting circuit, if any."""
     t0 = time.time()
     rng = np.random.default_rng(seed)
     cur = to_base(circ)
     best = _native(cur, native_dirs)
     best_cost = objective(metrics(best))
     history = [(0, 0.0, best_cost)]
+    lin = dict(blocks=0, eps_sum=0.0, eps_max=0.0, rounds=0)
+    if lineage:
+        lin.update({k: lineage[k] for k in lin if k in lineage})
+    best_lin = dict(lin)
     strategies = [st for st in STRATEGIES if min_qubits <= st[2] <= max_qubits]
     ns = len(strategies)
     quality = np.ones(ns)          # probability matching (adaptive operator selection)
@@ -80,8 +89,9 @@ def memetic_resynthesis(circ: Circuit, native_dirs, objective, time_limit: float
                 k = int(rng.choice(ns, p=prob / prob.sum()))
             ts = time.time()
             before = cur.cx_count()
+            rstats: dict = {}
             new = resynthesis_round(cur, strategies[k], rng, pool=pool, p_cut=0.1 + 0.2 * rng.random(),
-                                    time_limit=left, sparse=sparse)
+                                    time_limit=left, sparse=sparse, stats=rstats)
             new = to_base(cleanup(to_base(new), None, "continuous"))
             saved = before - new.cx_count()
             if new.cx_count() <= before and not _round_ok(cur, new):
@@ -91,11 +101,17 @@ def memetic_resynthesis(circ: Circuit, native_dirs, objective, time_limit: float
                       f"equivalent to its input", file=sys.stderr, flush=True)
                 new, saved = cur, 0
             if new.cx_count() <= before:
+                if new is not cur:  # accepted round: its block replacements join the lineage
+                    lin["blocks"] += rstats.get("accepted", 0)
+                    lin["eps_sum"] += rstats.get("eps_sum", 0.0)
+                    lin["eps_max"] = max(lin["eps_max"], rstats.get("eps_max", 0.0))
+                    lin["rounds"] += 1
                 cur = new
                 nat = _native(cur, native_dirs)
                 c = objective(metrics(nat))
                 if c < best_cost:
                     best, best_cost = nat, c
+                    best_lin = dict(lin)
             reward = max(0, saved) / max(1e-3, time.time() - ts)
             quality[k] = 0.7 * quality[k] + 0.3 * (reward + 1e-3)
             fails = fails + 1 if saved <= 0 else 0
@@ -108,4 +124,7 @@ def memetic_resynthesis(circ: Circuit, native_dirs, objective, time_limit: float
         if pool is not None:
             pool.close()
             pool.join()
+    if lineage is not None:
+        lineage.clear()
+        lineage.update(best_lin)
     return best, history

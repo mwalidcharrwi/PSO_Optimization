@@ -104,6 +104,9 @@ CHUNK = 6000  # gates per chunk for large circuits (TKET's passes scale super-li
 
 BLOCK_QUBITS = 10   # wide circuits: TKET is applied inside convex blocks of at most this many qubits
 STATS = {"blocks": 0, "rejected": 0}
+# accepted block rewrites of the most recent block-wise call, as (original, replacement) gate lists on
+# local qubits; kept so that their spectral-norm errors can be bounded exactly afterwards (Prop. 1(c))
+LAST_BLOCKS: list = []
 
 
 def full(circ: Circuit, chunk: int | None = None) -> Circuit:
@@ -133,6 +136,7 @@ def _blockwise(circ: Circuit, max_qubits: int | None = None) -> Circuit:
     from .resynth import partition, rebuild
     max_qubits = max_qubits or BLOCK_QUBITS
     repl = []
+    LAST_BLOCKS.clear()
     for qubits, idx in partition(circ, max_qubits):
         if sum(1 for i in idx if len(circ.gates[i].qubits) == 2) < 3:
             continue
@@ -146,6 +150,8 @@ def _blockwise(circ: Circuit, max_qubits: int | None = None) -> Circuit:
         if out.cx_count() > sub.cx_count():
             continue
         repl.append((idx, [Gate(g.name, tuple(qubits[q] for q in g.qubits), g.params) for g in out.gates]))
+        LAST_BLOCKS.append((len(qubits), [(g.name, list(g.qubits), list(g.params)) for g in sub.gates],
+                            [(g.name, list(g.qubits), list(g.params)) for g in out.gates]))
     return rebuild(circ, repl) if repl else circ
 
 
