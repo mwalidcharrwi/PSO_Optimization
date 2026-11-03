@@ -28,6 +28,67 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
 
+def _clifford_words():
+    """The 24 single-qubit Cliffords as shortest words over {h, s, sdg, x, z} (up to phase)."""
+    import itertools
+    import numpy as np
+    from qcpso.circuit import Gate
+    mats = {"h": np.array([[1, 1], [1, -1]]) / np.sqrt(2), "s": np.diag([1, 1j]), "sdg": np.diag([1, -1j]),
+            "x": np.array([[0, 1], [1, 0]]), "z": np.diag([1, -1])}
+    words = {}
+    for length in range(0, 5):
+        for w in itertools.product(mats, repeat=length):
+            u = np.eye(2, dtype=complex)
+            for g in w:
+                u = mats[g] @ u
+            key = _canon(u)
+            if key not in words:
+                words[key] = list(w)
+    assert len(words) == 24, len(words)
+    return words
+
+
+def _canon(u):
+    import numpy as np
+    k = np.argmax(np.abs(u.ravel()) > 1e-6)
+    v = u / (u.ravel()[k] / abs(u.ravel()[k]))
+    return tuple(np.round(v.ravel(), 6))
+
+
+def expose_cliffords(circ):
+    """Exact rewrite of every maximal single-qubit run: a Clifford run becomes named Clifford gates
+    (so that IBM's collectors see it, as they would before basis translation); any other run
+    becomes rz . sx . rz . sx . rz."""
+    import numpy as np
+    from qcpso.circuit import Circuit, Gate
+    from qcpso.linalg import u3_params
+    words = _clifford_words()
+    out, run = [], {}
+
+    def flush(q):
+        u = run.pop(q, None)
+        if u is None:
+            return
+        w = words.get(_canon(u))
+        if w is not None:
+            out.extend(Gate(g, (q,)) for g in w)
+            return
+        t, p, l = u3_params(u)   # U3(t, p, l) = e^{i(p+l)/2} Rz(p) Rx(-pi/2) ... ; use the ZSXZSXZ form
+        out.extend([Gate("rz", (q,), (l,)), Gate("sx", (q,)), Gate("rz", (q,), (t + np.pi,)), Gate("sx", (q,)),
+                    Gate("rz", (q,), (p + 3 * np.pi,))])
+
+    for g in circ.gates:
+        if len(g.qubits) == 1:
+            run[g.qubits[0]] = g.matrix() @ run.get(g.qubits[0], np.eye(2, dtype=complex))
+        else:
+            for q in g.qubits:
+                flush(q)
+            out.append(g)
+    for q in list(run):
+        flush(q)
+    return Circuit(circ.n_qubits, out, circ.name)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--suite", default=os.path.join(ROOT, "test_circuits_new"))
@@ -35,6 +96,9 @@ def main():
     ap.add_argument("--circuits", default="")
     ap.add_argument("--reps", type=int, default=2, help="passes over the four collect/synthesise stages")
     ap.add_argument("--threads", type=int, default=4)
+    ap.add_argument("--pauli", action="store_true",
+                    help="also run AIPauliNetworkSynthesis (off: in local mode its output was not equivalent to "
+                         "its input on mult_8, 67 instead of 311 CX, so it cannot be used under the contract)")
     args = ap.parse_args()
 
     import qiskit.qasm2
@@ -62,17 +126,21 @@ def main():
             continue
         orig = load(p)
         small, used = compact(to_cx(orig))
+        small = expose_cliffords(small)
         idx = {q: i for i, q in enumerate(used)}
         edges = sorted({(idx[a], idx[b]) for a, b in native_directions(orig)})
         cm = CouplingMap([list(e) for e in edges] + [[b, a] for a, b in edges])
         qc = qiskit.qasm2.loads(_qasm(small), custom_instructions=qiskit.qasm2.LEGACY_CUSTOM_INSTRUCTIONS)
         kw = dict(coupling_map=cm, replace_only_if_better=True, local_mode=True, max_threads=args.threads)
         stages = []
-        for _ in range(args.reps):
-            stages += [CollectCliffords(), AICliffordSynthesis(**kw),
-                       CollectLinearFunctions(), AILinearFunctionSynthesis(**kw),
-                       CollectPermutations(), AIPermutationSynthesis(**kw),
-                       CollectPauliNetworks(), AIPauliNetworkSynthesis(**kw)]
+        for _ in range(args.reps):   # IBM's level-3 post-routing collection (front and back), all four syntheses
+            for back in (False, True):
+                stages += [CollectCliffords(collect_from_back=back), AICliffordSynthesis(**kw),
+                           CollectLinearFunctions(do_commutative_analysis=True, collect_from_back=back),
+                           AILinearFunctionSynthesis(**kw),
+                           CollectPermutations(collect_from_back=back), AIPermutationSynthesis(**kw)]
+                if args.pauli:
+                    stages += [CollectPauliNetworks(collect_from_back=back), AIPauliNetworkSynthesis(**kw)]
         t = time.time()
         out_qc = PassManager(stages).run(qc)
         dt = time.time() - t

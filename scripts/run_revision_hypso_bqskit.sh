@@ -43,3 +43,11 @@ PY
 echo "$(date -u +%FT%TZ) BQSKit pilot chose $LVL" >> "$ROOT/logs/phaseBC.log"
 for c in heisenberg_8 add_17 qae_17 qft_16 hubbard_8 hhl_8 $LARGE; do job bqskit_del $LVL $c 0; done
 echo "$(date -u +%FT%TZ) phase C done" >> "$ROOT/logs/phaseBC.log"
+
+# D: IBM's AI synthesis passes (local mode, separate environment; see scripts/run_ai_synthesis.py)
+if [ -x /home/user/aienv/bin/python ] && [ ! -e "$ROOT/.done/ibm_ai" ]; then
+  echo "$(date -u +%FT%TZ) IBM AI synthesis start" >> "$ROOT/logs/phaseBC.log"
+  /home/user/aienv/bin/python -I scripts/run_ai_synthesis.py --threads 4 >> "$ROOT/logs/ai_synthesis.log" 2>&1 \
+      && touch "$ROOT/.done/ibm_ai"
+  echo "$(date -u +%FT%TZ) IBM AI synthesis end" >> "$ROOT/logs/phaseBC.log"
+fi
