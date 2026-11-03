@@ -1,0 +1,6 @@
+circuit,used_qubits,method,seed,budget,time,ecr,sx,x,rz,oneq_phys,gates,depth,twoq_depth,coupling_ok,verified,note
+hubbard_18,31,guoq@60,0,60.0,60.0,33926,48651,2,48694,48653,131273,56476,21755,True,pending,
+hubbard_18,31,guoq@300,0,300.0,300.0,33829,48579,2,48615,48581,131025,56316,21689,True,pending,
+hubbard_18,31,guoq@900,0,900.0,900.0,33829,48578,2,48610,48580,131019,56317,21689,True,pending,
+hubbard_18,31,guoq@1800,0,1800.0,1800.0,33767,48482,2,48525,48484,130776,56218,21656,True,pending,
+hubbard_18,31,guoq,0,3600.0,3600.0,33727,48459,1,48395,48460,130582,56119,21642,True,pending,
