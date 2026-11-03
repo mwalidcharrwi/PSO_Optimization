@@ -11,3 +11,4 @@ results/ibm_literature/logs/
 paper/figures/src/puppeteer.json
 results/ibm_revision/**/work/
 results/ibm_revision/logs/
+results/ibm_revision/guoq_trace.csv
