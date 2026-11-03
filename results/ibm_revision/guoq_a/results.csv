@@ -36,3 +36,6 @@ heisenberg_8,8,guoq,1,900.0,900.0,336,543,1,714,544,1594,551,179,True,equivalent
 heisenberg_8,8,guoq@60,2,60.0,60.0,391,446,2,499,448,1338,524,211,True,equivalent,
 heisenberg_8,8,guoq@300,2,300.0,300.0,349,494,1,590,495,1434,557,196,True,NOT_EQUIVALENT,
 heisenberg_8,8,guoq,2,900.0,900.0,320,552,0,701,552,1573,608,184,True,NOT_EQUIVALENT,
+add_17,17,guoq@60,1,60.0,60.0,447,658,2,763,660,1870,660,250,True,equivalent,
+add_17,17,guoq@300,1,300.0,300.0,423,679,1,862,680,1965,703,240,True,equivalent,
+add_17,17,guoq,1,900.0,900.0,412,694,1,926,695,2033,700,229,True,equivalent,
