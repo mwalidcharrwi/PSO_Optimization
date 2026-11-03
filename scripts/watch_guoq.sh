@@ -11,6 +11,7 @@ while true; do
     m=$(stat -c %Y "$f")
     echo "$now,$(dirname "$(dirname "$f")"),$(grep -c '^cx ' "$f"),$m" >> "$OUT"
   done
+  echo "$now,$(free -m | awk '/Mem:/{print $3","$7}')" >> results/ibm_revision/logs/mem.csv
   pgrep -f run_revision_guoq.sh > /dev/null || exit 0
   sleep 30
 done

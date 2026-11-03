@@ -14,6 +14,7 @@ job() {  # lane circuit method seed time_limit snapshots heap port
   local lane=$1 c=$2 m=$3 s=$4 t=$5 snaps=$6 heap=$7 port=$8
   local id="${lane}_${c}_${m}_s${s}_t${t}"
   [ -e "$ROOT/.done/$id" ] && return 0
+  rm -rf "$ROOT/guoq_$lane/work/${c}_${m}_s${s}" "$ROOT/guoq_$lane/work/${c}_${m}_s${s}_server.log"   # no stale files
   echo "$(date -u +%FT%TZ) start $id" >> "$ROOT/logs/lane_${lane}.log"
   GUOQ_HEAP=$heap python -m qcpso.bench.compare_ibm --out "$ROOT/guoq_$lane" --methods "$m" --circuits "$c" \
       --seeds 1 --seed0 "$s" --time-limit "$t" --snapshots "$snaps" --port "$port" \
