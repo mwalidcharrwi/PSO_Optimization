@@ -1,0 +1,6 @@
+circuit,used_qubits,method,seed,budget,time,ecr,sx,x,rz,oneq_phys,gates,depth,twoq_depth,coupling_ok,verified,note
+mult_8,8,guoq@60,0,60.0,60.0,263,422,1,511,423,1197,730,232,True,equivalent,
+mult_8,8,guoq@300,0,300.0,300.0,222,404,0,525,404,1151,640,185,True,equivalent,
+mult_8,8,guoq@900,0,900.0,900.0,191,421,0,580,421,1192,635,162,True,equivalent,
+mult_8,8,guoq@1800,0,1800.0,1800.0,191,421,0,580,421,1192,635,162,True,equivalent,
+mult_8,8,guoq,0,3600.0,3600.0,191,421,0,580,421,1192,635,162,True,equivalent,
