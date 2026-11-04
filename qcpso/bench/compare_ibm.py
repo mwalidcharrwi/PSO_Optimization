@@ -174,8 +174,10 @@ def main(argv=None):
                         lvl = int(method[len("bqskit_del"):] or 1)
                         logp = os.path.join(args.out, f"{name}_{method}_s{seed}.log")
                         with open(logp, "w") as lg:
+                            chunk = int(os.environ.get("BQSKIT_CHUNK", "3000"))   # gates per submitted chunk
+                            print(f"[bqskit-del      0s] chunk {chunk} gates", file=lg, flush=True)
                             out, ok, dt, extra = L.run_bqskit_deletion(orig, args.time_limit, args.workers,
-                                                                       level=lvl, log=lg)
+                                                                       level=lvl, log=lg, chunk=chunk)
                         rows.append(_row(orig, name, method, seed, args.time_limit, dt, out,
                                          "" if ok else "violates coupling"))
                         outs = {method: out}
