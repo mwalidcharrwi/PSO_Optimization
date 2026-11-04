@@ -219,7 +219,8 @@ def run_bqskit(circ: Circuit, level: int = 3, epsilon: float = 1e-8, seed: int =
 
 
 def run_bqskit_deletion(circ: Circuit, time_limit: float = 900.0, workers: int = 4, block_size: int = 3,
-                        level: int = 1, epsilon: float = 1e-8, chunk: int = 3000, log=None):
+                        level: int = 1, epsilon: float = 1e-8, chunk: int = 3000, log=None,
+                        max_block_size: int = 5):
     """BQSKit's deletion-only workflow (``build_gate_deletion_optimization_workflow``:
     partition into ``block_size``-qubit blocks, ``ScanningGateRemovalPass`` per
     block, unfold) under a wall-clock budget.
@@ -229,8 +230,11 @@ def run_bqskit_deletion(circ: Circuit, time_limit: float = 900.0, workers: int =
     that every remaining gate can be re-instantiated.  BQSKit has no time limit,
     so the circuit is processed in chunks of ``chunk`` gates on one compiler with
     ``workers`` workers; sweeps over all chunks repeat (with shifted chunk
-    boundaries) while the gate count still drops and time is left.  A chunk that
-    is unfinished at the deadline is cancelled and kept unchanged.
+    boundaries) while time is left.  When a sweep no longer lowers the gate count,
+    the block size grows by one (up to ``max_block_size``), so that the whole
+    budget is used; the run stops early only at a fixed point of the largest
+    block size.  A chunk that is unfinished at the deadline is cancelled and kept
+    unchanged.
 
     Returns ``(native circuit, respects_mapping, seconds, info)``."""
     from bqskit.compiler import Compiler
@@ -245,7 +249,7 @@ def run_bqskit_deletion(circ: Circuit, time_limit: float = 900.0, workers: int =
     lang = OPENQASM2Language()
     gates = list(small.gates)
     info = dict(sweeps=0, chunks_done=0, chunks_cancelled=0, cx_start=small.cx_count(), level=level,
-                block_size=block_size)
+                block_size=block_size, block_sizes=[block_size], fixed_point=False)
 
     def say(msg):
         if log:
@@ -284,10 +288,18 @@ def run_bqskit_deletion(circ: Circuit, time_limit: float = 900.0, workers: int =
             info["sweeps"] += 1
             after = (sum(1 for g in gates if g.name == "cx"), len(gates))
             say(f"sweep {info['sweeps']}: cx {before[0]} -> {after[0]}, gates {before[1]} -> {after[1]}"
-                f"{' (deadline)' if cancelled else ''}")
-            if cancelled or after >= before:
+                f" [block {block_size}]{' (deadline)' if cancelled else ''}")
+            if cancelled:
                 break
+            if after >= before:   # fixed point at this block size: enlarge the blocks
+                if block_size >= max_block_size:
+                    info["fixed_point"] = True
+                    break
+                block_size += 1
+                info["block_sizes"].append(block_size)
+                workflow = build_gate_deletion_optimization_workflow(level, epsilon, block_size)
             offset = chunk // 2 if not offset else 0
+    info["block_size"] = block_size
     dt = time.time() - t0
     nat, ok = back_to_native(Circuit(small.n_qubits, gates), used, circ)
     return nat, ok, dt, info

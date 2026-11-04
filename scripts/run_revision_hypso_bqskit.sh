@@ -3,7 +3,8 @@
 #   B: HyPSO-QCO, resynthesis-only configuration (hypso_rs, pre-specified for mapped circuits):
 #      fresh seeds 1-3 on the seven smaller circuits, seed 1 on the three large circuits,
 #      and Z-slot sparsification off (seed 1) on the seven smaller circuits.
-#   C: BQSKit deletion-only workflow, 15 min and 4 workers per circuit; the instantiation level
+#   C: BQSKit deletion-only workflow, 15 min and 4 workers per circuit (block size 3, enlarged to 4
+#      and 5 whenever a sweep stops lowering the gate count, so the budget is used); the instantiation level
 #      (1 or 2) is chosen by a pilot on mult_8 (fewer ECR gates, then fewer gates).
 # Resumable: finished jobs leave markers in results/ibm_revision/.done/.
 set -u
