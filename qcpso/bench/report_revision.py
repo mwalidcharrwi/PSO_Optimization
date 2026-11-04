@@ -161,9 +161,10 @@ def main(argv=None):
         # per-circuit margin over the best other tool at 15 minutes
         others15 = [t for t, _ in tools if t not in ("hypso_rs", "guoq60")]
         out += ["## Margin over the best other tool (ECR)", "",
-                "| circuit | HyPSO-QCO mean | best other at 15 min | margin | GUOQ 60 min | margin vs GUOQ 60 |",
-                "|---|---:|---|---:|---:|---:|"]
-        margins, margins60 = [], []
+                "| circuit | HyPSO-QCO mean | best other at 15 min | margin | GUOQ 60 min | margin vs GUOQ 60 | "
+                "best other at any budget | margin (any budget) |",
+                "|---|---:|---|---:|---:|---:|---|---:|"]
+        margins, margins60, margins_any = [], [], []
         for c in CIRCUITS:
             h = stat(runs, "hypso_rs", c)
             cand = [(stat(runs, t, c)[0], lab) for t, lab in tools if t in others15 and stat(runs, t, c)]
@@ -174,11 +175,14 @@ def main(argv=None):
             margins.append(1 - h[0] / bv)
             if g60:
                 margins60.append(1 - h[0] / g60[0])
+            av, al = min(cand + ([(g60[0], "GUOQ 60 min")] if g60 else []))
+            margins_any.append(1 - h[0] / av)
             out.append(f"| {c} | {h[0]:,.1f} | {bv:,.1f} ({bl}) | {100 * (1 - h[0] / bv):.1f} % | "
-                       f"{fmt(g60)} | {'–' if not g60 else f'{100 * (1 - h[0] / g60[0]):.1f} %'} |")
+                       f"{fmt(g60)} | {'–' if not g60 else f'{100 * (1 - h[0] / g60[0]):.1f} %'} | "
+                       f"{av:,.1f} ({al}) | {100 * (1 - h[0] / av):.1f} % |")
         if margins:
             out.append(f"| mean | | | {100 * np.mean(margins):.1f} % | | "
-                       f"{100 * np.mean(margins60):.1f} % |" if margins60 else "")
+                       f"{100 * np.mean(margins60):.1f} % | | {100 * np.mean(margins_any):.1f} % |" if margins60 else "")
         out.append("")
         # headline numbers: geometric-mean ECR ratio and ECR gates removed
         out += ["## Headline numbers (ECR, means over seeds)", "",
