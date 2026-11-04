@@ -4,3 +4,4 @@ mult_8,8,bqskit_del2,0,900.0,900.3,246,358,0,435,358,1039,618,211,True,equivalen
 heisenberg_8,8,bqskit_del,0,900.0,900.1,399,371,2,498,373,1270,364,128,True,equivalent,
 add_17,17,bqskit_del,0,900.0,627.7,470,659,2,760,661,1891,623,237,True,equivalent,
 qae_17,17,bqskit_del,0,900.0,882.5,501,706,3,853,709,2063,675,252,True,equivalent,
+qft_16,16,bqskit_del,0,900.0,422.5,583,788,0,882,788,2253,646,249,True,equivalent,
