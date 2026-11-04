@@ -1,2 +1,3 @@
 circuit,used_qubits,method,seed,budget,time,ecr,sx,x,rz,oneq_phys,gates,depth,twoq_depth,coupling_ok,verified,note
 mult_8,8,bqskit_del,0,900.0,900.2,227,361,0,442,361,1030,610,199,True,equivalent,
+mult_8,8,bqskit_del2,0,900.0,900.1,244,354,0,423,354,1021,610,208,True,equivalent,
