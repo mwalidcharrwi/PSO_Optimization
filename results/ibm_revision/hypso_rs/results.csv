@@ -18,3 +18,4 @@ hubbard_8,8,hypso_rs,2,900.0,902.6,896,1234,2,1390,1236,3522,1876,707,True,equiv
 hhl_8,8,hypso_rs,2,900.0,900.4,287,586,1,712,587,1586,1068,261,True,equivalent,
 mult_8,8,hypso_rs,3,900.0,900.1,153,287,0,353,287,793,457,126,True,equivalent,
 heisenberg_8,8,hypso_rs,3,900.0,900.2,261,437,1,503,438,1202,335,104,True,equivalent,
+add_17,17,hypso_rs,3,900.0,900.4,393,597,2,687,599,1679,547,195,True,equivalent,
