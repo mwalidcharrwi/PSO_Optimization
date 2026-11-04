@@ -1,0 +1,7 @@
+circuit,used_qubits,method,seed,budget,time,ecr,sx,x,rz,oneq_phys,gates,depth,twoq_depth,coupling_ok,verified,note
+mult_8,8,ibm_ai,0,,25.0,308,530,0,635,530,1473,873,273,True,equivalent,
+heisenberg_8,8,ibm_ai,0,,51.2,420,476,1,572,477,1469,420,154,True,equivalent,
+add_17,17,ibm_ai,0,,56.1,495,776,1,910,777,2182,745,260,True,equivalent,
+qae_17,17,ibm_ai,0,,76.6,541,869,0,999,869,2409,797,278,True,equivalent,
+qft_16,16,ibm_ai,0,,75.2,612,964,1,1089,965,2666,732,267,True,equivalent,
+hubbard_8,8,ibm_ai,0,,153.2,1221,1855,1,2115,1856,5192,2789,991,True,equivalent,
