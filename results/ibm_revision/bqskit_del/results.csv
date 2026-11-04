@@ -6,3 +6,4 @@ add_17,17,bqskit_del,0,900.0,627.7,470,659,2,760,661,1891,623,237,True,equivalen
 qae_17,17,bqskit_del,0,900.0,882.5,501,706,3,853,709,2063,675,252,True,equivalent,
 qft_16,16,bqskit_del,0,900.0,422.5,583,788,0,882,788,2253,646,249,True,equivalent,
 hubbard_8,8,bqskit_del,0,900.0,900.1,1243,1768,1,2045,1769,5057,2769,1027,True,equivalent,
+hhl_8,8,bqskit_del,0,900.0,900.1,2269,5206,0,6186,5206,13661,8600,2215,True,equivalent,
