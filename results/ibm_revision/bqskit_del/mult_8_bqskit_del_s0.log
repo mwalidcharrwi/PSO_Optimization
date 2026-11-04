@@ -8,3 +8,4 @@
 [bqskit-del    181s] sweep 8: cx 247 -> 243, gates 409 -> 402 [block 4]
 [bqskit-del    252s] sweep 9: cx 243 -> 243, gates 402 -> 402 [block 4]
 [bqskit-del    639s] sweep 10: cx 243 -> 227, gates 402 -> 380 [block 5]
+[bqskit-del    900s] sweep 11: cx 227 -> 227, gates 380 -> 380 [block 5] (deadline)
