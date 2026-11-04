@@ -14,3 +14,5 @@ results/ibm_revision/logs/
 results/ibm_revision/guoq_trace.csv
 # in-progress BQSKit logs; force-added in phase D
 results/ibm_revision/bqskit_del/*.log
+# written while verification runs; force-added in phase D
+results/ibm_revision/verification.csv
