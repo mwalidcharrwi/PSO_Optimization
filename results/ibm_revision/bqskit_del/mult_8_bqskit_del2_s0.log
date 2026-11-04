@@ -1,3 +1,0 @@
-[bqskit-del     13s] sweep 1: cx 303 -> 270, gates 536 -> 462 [block 3]
-[bqskit-del     23s] sweep 2: cx 270 -> 269, gates 462 -> 456 [block 3]
-[bqskit-del     33s] sweep 3: cx 269 -> 269, gates 456 -> 456 [block 3]
