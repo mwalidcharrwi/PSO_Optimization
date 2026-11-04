@@ -163,6 +163,7 @@ def main(argv=None):
         out += ["## Margin over the best other tool (ECR)", "",
                 "| circuit | HyPSO-QCO mean | best other at 15 min | margin | GUOQ 60 min | margin vs GUOQ 60 |",
                 "|---|---:|---|---:|---:|---:|"]
+        margins, margins60 = [], []
         for c in CIRCUITS:
             h = stat(runs, "hypso_rs", c)
             cand = [(stat(runs, t, c)[0], lab) for t, lab in tools if t in others15 and stat(runs, t, c)]
@@ -170,8 +171,31 @@ def main(argv=None):
                 continue
             bv, bl = min(cand)
             g60 = stat(runs, "guoq60", c)
+            margins.append(1 - h[0] / bv)
+            if g60:
+                margins60.append(1 - h[0] / g60[0])
             out.append(f"| {c} | {h[0]:,.1f} | {bv:,.1f} ({bl}) | {100 * (1 - h[0] / bv):.1f} % | "
                        f"{fmt(g60)} | {'–' if not g60 else f'{100 * (1 - h[0] / g60[0]):.1f} %'} |")
+        if margins:
+            out.append(f"| mean | | | {100 * np.mean(margins):.1f} % | | "
+                       f"{100 * np.mean(margins60):.1f} % |" if margins60 else "")
+        out.append("")
+        # headline numbers: geometric-mean ECR ratio and ECR gates removed
+        out += ["## Headline numbers (ECR, means over seeds)", "",
+                "| tool | circuits | mean reduction | geometric-mean ECR ratio | ECR gates removed |", "|---|---:|---:|---:|---:|"]
+        for t, lab in tools:
+            cs = [c for c in CIRCUITS if stat(runs, t, c)]
+            if not cs:
+                continue
+            ratios = [stat(runs, t, c)[0] / inp[c]["ecr"] for c in cs]
+            removed = sum(inp[c]["ecr"] - stat(runs, t, c)[0] for c in cs)
+            out.append(f"| {lab} | {len(cs)} | {100 * (1 - np.mean(ratios)):.1f} % | "
+                       f"{math.exp(np.mean(np.log(ratios))):.3f} | {removed:,.0f} |")
+        hs = [stat(runs, "hypso_rs", c) for c in SMALL if stat(runs, "hypso_rs", c)]
+        if hs:
+            out.append("")
+            out.append(f"Largest HyPSO-QCO seed-to-seed sd (ECR): {max(h[1] for h in hs):.1f}; "
+                       f"largest relative sd: {100 * max(h[1] / h[0] for h in hs):.1f} %.")
         out.append("")
         # worst HyPSO-QCO seed vs best GUOQ run
         out += ["## Worst HyPSO-QCO seed vs best GUOQ run (ECR), seven smaller circuits", "",
@@ -230,25 +254,46 @@ def main(argv=None):
 
     # BQSKit details
     if runs.get(bq):
-        out += ["## BQSKit deletion details", "", "| circuit | time (s) | sweeps / chunks done / cancelled |", "|---|---:|---|"]
+        import re
+        out += ["## BQSKit deletion details", "",
+                "| circuit | time (s) | sweeps | CX after block size 3 / 4 / 5 (compact {u3, cx} form) | ECR |",
+                "|---|---:|---:|---|---:|"]
         for c in CIRCUITS:
             lg = os.path.join(REV, "bqskit_del", f"{c}_{bq}_s0.log")
-            sweeps = open(lg).read().count("sweep") if os.path.exists(lg) else "–"
             r = runs[bq].get(c)
-            out.append(f"| {c} | {r[0]['time'] if r else '–'} | {sweeps} sweeps |")
+            if not os.path.exists(lg):
+                continue
+            last = {}
+            n = 0
+            for line in open(lg):
+                m = re.search(r"sweep (\d+): cx (\d+) -> (\d+).*\[block (\d+)\]", line)
+                if m:
+                    n = int(m.group(1))
+                    last[int(m.group(4))] = int(m.group(3))
+            per = " / ".join(str(last.get(b, "–")) for b in (3, 4, 5))
+            out.append(f"| {c} | {r[0]['time'] if r else '–'} | {n} | {per} | {r[0]['ecr']:.0f} |" if r else
+                       f"| {c} | – | {n} | {per} | – |")
         out.append("")
 
     # deviations
     vpath = os.path.join(REV, "verification.csv")
     if os.path.exists(vpath):
         dev = defaultdict(list)
+        unchecked = defaultdict(list)
         for r in csv.DictReader(open(vpath)):
+            if r.get("deviation") in (None, ""):
+                unchecked[r["method"]].append(r["circuit"])
+                continue
             dev[r["method"]].append((float(r["deviation"]), r["circuit"], r["check"]))
-        out += ["## Verification (largest deviation per method)", "", "| method | outputs | max deviation | circuit |",
-                "|---|---:|---:|---|"]
-        for m, v in sorted(dev.items()):
-            d, c, ch = max(v)
-            out.append(f"| {m} | {len(v)} | {d:.1e} | {c} ({ch}) |")
+        out += ["## Verification (largest deviation per method)", "",
+                "| method | checked outputs | max deviation | circuit | approximate (≥ 1e-6) | unchecked |",
+                "|---|---:|---:|---|---|---|"]
+        for m in sorted(set(dev) | set(unchecked)):
+            v = dev.get(m, [])
+            d, c, ch = max(v) if v else (float("nan"), "–", "–")
+            approx = sorted({f"{cc} ({dd:.1e})" for dd, cc, _ in v if dd >= 1e-6})
+            out.append(f"| {m} | {len(v)} | {d:.1e} | {c} ({ch}) | {', '.join(approx) or '–'} | "
+                       f"{', '.join(sorted(set(unchecked.get(m, [])))) or '–'} |")
         out.append("")
     print("\n".join(out))
 
