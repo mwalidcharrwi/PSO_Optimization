@@ -12,4 +12,5 @@ paper/figures/src/puppeteer.json
 results/ibm_revision/**/work/
 results/ibm_revision/logs/
 results/ibm_revision/guoq_trace.csv
-results/ibm_revision/bqskit_del/*.log   # in-progress BQSKit logs; force-added in phase D
+# in-progress BQSKit logs; force-added in phase D
+results/ibm_revision/bqskit_del/*.log
