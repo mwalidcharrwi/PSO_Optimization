@@ -4,3 +4,4 @@ heisenberg_8,8,hypso_rs,1,900.0,900.2,260,463,1,551,464,1275,361,105,True,equiva
 add_17,17,hypso_rs,1,900.0,900.2,392,613,2,684,615,1691,550,194,True,equivalent,
 qae_17,17,hypso_rs,1,900.0,900.4,416,649,1,744,650,1810,553,185,True,equivalent,
 qft_16,16,hypso_rs,1,900.0,900.3,512,755,0,869,755,2136,589,212,True,equivalent,
+hubbard_8,8,hypso_rs,1,900.0,900.3,827,1093,0,1244,1093,3164,1663,643,True,equivalent,
