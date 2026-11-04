@@ -5,7 +5,8 @@
 #      and Z-slot sparsification off (seed 1) on the seven smaller circuits.
 #   C: BQSKit deletion-only workflow, 15 min and 4 workers per circuit (block size 3, enlarged to 4
 #      and 5 whenever a sweep stops lowering the gate count, so the budget is used); the instantiation level
-#      (1 or 2) is chosen by a pilot on mult_8 (fewer ECR gates, then fewer gates).
+#      (1 or 2) is chosen by a pilot on mult_8 (fewer ECR gates, then fewer gates); acceptance threshold
+#      1e-15 on the Hilbert-Schmidt cost, so that the output passes the same 1e-6 equivalence check.
 # Resumable: finished jobs leave markers in results/ibm_revision/.done/.
 set -u
 cd "$(dirname "$0")/.."

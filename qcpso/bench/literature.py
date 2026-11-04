@@ -219,7 +219,7 @@ def run_bqskit(circ: Circuit, level: int = 3, epsilon: float = 1e-8, seed: int =
 
 
 def run_bqskit_deletion(circ: Circuit, time_limit: float = 900.0, workers: int = 4, block_size: int = 3,
-                        level: int = 1, epsilon: float = 1e-8, chunk: int = 3000, log=None,
+                        level: int = 1, epsilon: float = 1e-15, chunk: int = 3000, log=None,
                         max_block_size: int = 5):
     """BQSKit's deletion-only workflow (``build_gate_deletion_optimization_workflow``:
     partition into ``block_size``-qubit blocks, ``ScanningGateRemovalPass`` per
@@ -235,6 +235,13 @@ def run_bqskit_deletion(circ: Circuit, time_limit: float = 900.0, workers: int =
     budget is used; the run stops early only at a fixed point of the largest
     block size.  A chunk that is unfinished at the deadline is cancelled and kept
     unchanged.
+
+    ``epsilon`` is BQSKit's acceptance threshold on the Hilbert-Schmidt cost of a
+    block, which grows with the square of the operator error (cost ~ ||dU||^2 / 5).
+    BQSKit's default 1e-8 accepts blocks that are ~2e-4 off in operator norm, and
+    on heisenberg_8 the output failed the 1e-6 equivalence check that every tool
+    must pass (spectral distance 1.4e-4).  1e-15 is the tightest threshold above
+    the cost's rounding floor (~2e-16); it admits < 1e-7 per block.
 
     Returns ``(native circuit, respects_mapping, seconds, info)``."""
     from bqskit.compiler import Compiler
