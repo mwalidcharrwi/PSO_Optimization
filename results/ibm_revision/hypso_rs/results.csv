@@ -1,3 +1,4 @@
 circuit,used_qubits,method,seed,budget,time,ecr,sx,x,rz,oneq_phys,gates,depth,twoq_depth,coupling_ok,verified,note
 mult_8,8,hypso_rs,1,900.0,900.1,157,284,0,349,284,790,466,130,True,equivalent,
 heisenberg_8,8,hypso_rs,1,900.0,900.2,260,463,1,551,464,1275,361,105,True,equivalent,
+add_17,17,hypso_rs,1,900.0,900.2,392,613,2,684,615,1691,550,194,True,equivalent,
