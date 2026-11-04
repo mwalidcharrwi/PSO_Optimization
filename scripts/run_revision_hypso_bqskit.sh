@@ -37,7 +37,8 @@ job bqskit_del bqskit_del mult_8 0
 job bqskit_del bqskit_del2 mult_8 0
 LVL=$(python - <<'PY'
 import csv
-rows = {r["method"]: r for r in csv.DictReader(open("results/ibm_revision/bqskit_del/results.csv")) if r.get("ecr")}
+rows = {r["method"]: r for r in csv.DictReader(open("results/ibm_revision/bqskit_del/results.csv"))
+        if r.get("ecr") and r["circuit"] == "mult_8"}   # the pilot rows only
 key = lambda m: (int(rows[m]["ecr"]), int(rows[m]["gates"])) if m in rows else (10**9, 10**9)
 print("bqskit_del2" if key("bqskit_del2") < key("bqskit_del") else "bqskit_del")
 PY
