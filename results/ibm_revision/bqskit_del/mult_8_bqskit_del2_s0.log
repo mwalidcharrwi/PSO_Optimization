@@ -1,0 +1,11 @@
+[bqskit-del     13s] sweep 1: cx 303 -> 271, gates 536 -> 464 [block 3]
+[bqskit-del     23s] sweep 2: cx 271 -> 268, gates 464 -> 453 [block 3]
+[bqskit-del     33s] sweep 3: cx 268 -> 266, gates 453 -> 451 [block 3]
+[bqskit-del     44s] sweep 4: cx 266 -> 266, gates 451 -> 450 [block 3]
+[bqskit-del     53s] sweep 5: cx 266 -> 266, gates 450 -> 450 [block 3]
+[bqskit-del    178s] sweep 6: cx 266 -> 249, gates 450 -> 419 [block 4]
+[bqskit-del    251s] sweep 7: cx 249 -> 247, gates 419 -> 411 [block 4]
+[bqskit-del    316s] sweep 8: cx 247 -> 246, gates 411 -> 408 [block 4]
+[bqskit-del    413s] sweep 9: cx 246 -> 246, gates 408 -> 407 [block 4]
+[bqskit-del    469s] sweep 10: cx 246 -> 246, gates 407 -> 407 [block 4]
+[bqskit-del    900s] sweep 11: cx 246 -> 246, gates 407 -> 407 [block 5] (deadline)

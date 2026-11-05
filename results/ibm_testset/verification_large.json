@@ -1,0 +1,22 @@
+{
+ "heisenberg_32": {
+  "overlap": 0.9999999999999927,
+  "peak_bond": 8,
+  "truncated": false,
+  "n_qubits": 32,
+  "seconds": 41.5,
+  "deviation": 7.327471962526033e-15,
+  "verdict": "equivalent",
+  "method": "Choi-state MPS alternating miter (qcpso/bench/mps_verify.py), exact (no truncation)"
+ },
+ "hubbard_18": {
+  "overlap": 0.9999999999563429,
+  "peak_bond": 256,
+  "truncated": false,
+  "n_qubits": 31,
+  "seconds": 1104.5,
+  "deviation": 4.3657077952730106e-11,
+  "verdict": "equivalent",
+  "method": "Choi-state MPS alternating miter (qcpso/bench/mps_verify.py), exact (no truncation)"
+ }
+}

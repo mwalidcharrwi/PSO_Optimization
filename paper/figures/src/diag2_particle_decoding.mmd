@@ -1,0 +1,32 @@
+%%{init: {"theme": "base", "flowchart": {"curve": "basis", "htmlLabels": true}, "themeVariables": {"fontFamily": "Liberation Sans, DejaVu Sans, sans-serif", "fontSize": "15px", "primaryTextColor": "#0b0b0b", "lineColor": "#52514e", "clusterBkg": "#f7f9fc", "clusterBorder": "#c3c2b7", "edgeLabelBackground": "#ffffff"}}}%%
+flowchart LR
+  subgraph X["<b>Particle</b> x ∈ [0,1)^D · one gene per decision, keyed by provenance"]
+    direction TB
+    G1["<b>variant genes</b><br/>exact decomposition of every multi-variant gate<br/>e.g. 16 ECR→CNOT lowerings, 120 Toffoli networks × polarity"]:::p1
+    G2["<b>lowering-mode gene</b><br/>per-ECR variants or greedy exact conversion"]:::p1
+    G3["<b>schedule genes</b><br/>6 slots ∈ {skip, cancel, fold, hred, kak, tket}"]:::p1
+    G4["<b>hardware genes</b> (logical circuits only)<br/>layout keys + router parameters"]:::opt
+  end
+  subgraph D["<b>Decoder</b> = semantics-preserving compiler"]
+    direction TB
+    D1["1 · lower gates with the chosen variants"]:::p2
+    D2["2 · run the chosen passes in order"]:::p2
+    D3["3 · clean-up fix point<br/>cancel → fold → hred"]:::p2
+    D4["4 · native re-synthesis<br/>CX → ECR in the native direction · fewest rz/sx/x"]:::p2
+    D1 --> D2 --> D3 --> D4
+  end
+  G1 --> D1
+  G2 --> D1
+  G3 --> D2
+  G4 -.-> D1
+  D4 --> C(["candidate C′ ≡ C<br/>by construction"]):::io
+  C --> F{"cost f(C′)"}:::chk
+  F --> U["<b>swarm update</b><br/>categorical PSO: one probability vector per gene<br/>w ← χ[w + c1r1(e(p) − π) + c2r2(e(l) − π)] · π ← normalise(max(π + w, 0))"]:::p1
+  U -.->|"new positions"| G1
+
+  classDef io fill:#f0efec,stroke:#898781,stroke-width:1px,color:#0b0b0b;
+  classDef p1 fill:#e6f0fc,stroke:#2a78d6,stroke-width:1px,color:#0b0b0b;
+  classDef p2 fill:#cde2fb,stroke:#1c5cab,stroke-width:1px,color:#0b0b0b;
+  classDef chk fill:#ffffff,stroke:#52514e,stroke-width:1px,color:#0b0b0b;
+  classDef tool fill:#ffffff,stroke:#c3c2b7,stroke-width:1px,color:#0b0b0b;
+  classDef opt fill:#ffffff,stroke:#2a78d6,stroke-width:1px,stroke-dasharray:4 3,color:#52514e;

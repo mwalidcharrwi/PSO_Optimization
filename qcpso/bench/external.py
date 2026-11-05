@@ -46,6 +46,10 @@ def _prepare(circ: Circuit) -> Circuit:
 
 def canonical(circ: Circuit, mode: str) -> Circuit:
     """Express a circuit in the comparison gate set of ``mode``."""
+    if mode == "ibm":  # native {rz, sx, x, ecr} output is counted as produced
+        if not all(g.name in ("rz", "sx", "x", "ecr") for g in circ.gates):
+            raise ValueError("ibm-mode baseline produced non-native gates")
+        return circ
     base = to_base(circ)
     if mode == "cliffordt":
         return base
@@ -68,9 +72,41 @@ def run_qiskit(circ: Circuit, mode: str = "cliffordt", seed: int = 0, level: int
     from qiskit.transpiler import PassManager, generate_preset_pass_manager
     from qiskit.transpiler.passes import ElidePermutations
     qc = qiskit.qasm2.loads(_qasm_in(circ), custom_instructions=qiskit.qasm2.LEGACY_CUSTOM_INSTRUCTIONS)
-    basis = ["h", "x", "rz", "cx"] if mode == "cliffordt" else ["u", "cx"]
     t = time.time()
-    pm = generate_preset_pass_manager(level, basis_gates=basis, seed_transpiler=seed)
+    if mode == "ibm":
+        # re-optimise an already mapped circuit: same register, trivial layout,
+        # directed coupling map = the native ECR directions used by the input
+        from qiskit.transpiler import CouplingMap as QCM
+        from ..native import native_directions
+        edges = sorted(native_directions(circ))
+        cmap = None
+        if edges:
+            cmap = QCM(edges)
+            for q in range(circ.n_qubits):
+                if q not in cmap.physical_qubits:
+                    cmap.add_physical_qubit(q)
+        pm = generate_preset_pass_manager(level, basis_gates=["rz", "sx", "x", "ecr"],
+                                          coupling_map=cmap,
+                                          initial_layout=list(range(circ.n_qubits)) if edges else None,
+                                          seed_transpiler=seed)
+        try:
+            out = _run_pm(pm, qc, allow_permutation)
+        except Exception:
+            # Qiskit sometimes creates an ECR in the non-native direction and cannot
+            # flip it; retry with an undirected map (a relaxation in Qiskit's favour)
+            both = sorted(set(edges) | {(b, a) for a, b in edges})
+            cmap2 = QCM(both)
+            for q in range(circ.n_qubits):
+                if q not in cmap2.physical_qubits:
+                    cmap2.add_physical_qubit(q)
+            pm = generate_preset_pass_manager(level, basis_gates=["rz", "sx", "x", "ecr"], coupling_map=cmap2,
+                                              initial_layout=list(range(circ.n_qubits)), seed_transpiler=seed)
+            out = _run_pm(pm, qc, allow_permutation)
+        dt = time.time() - t
+        return canonical(from_qiskit(out, n_qubits=circ.n_qubits), mode), dt
+    else:
+        basis = ["h", "x", "rz", "cx"] if mode == "cliffordt" else ["u", "cx"]
+        pm = generate_preset_pass_manager(level, basis_gates=basis, seed_transpiler=seed)
     if pm.init is not None and not allow_permutation:
         # ElidePermutations relabels output qubits instead of keeping final SWAPs,
         # which breaks strict equivalence; drop it so every tool is compared on the
@@ -79,8 +115,33 @@ def run_qiskit(circ: Circuit, mode: str = "cliffordt", seed: int = 0, level: int
         pm.init = PassManager([x for x in tasks if not isinstance(x, ElidePermutations)])
     out = pm.run(qc)
     dt = time.time() - t
-    res = parse_qasm(qiskit.qasm2.dumps(out))
+    res = from_qiskit(out, n_qubits=circ.n_qubits if mode == "ibm" else None)
     return canonical(res, mode), dt
+
+
+def _run_pm(pm, qc, allow_permutation):
+    from qiskit.transpiler import PassManager
+    from qiskit.transpiler.passes import ElidePermutations
+    if pm.init is not None and not allow_permutation:
+        tasks = [x for t_ in pm.init._tasks for x in (t_ if isinstance(t_, list) else [t_])]
+        pm.init = PassManager([x for x in tasks if not isinstance(x, ElidePermutations)])
+    return pm.run(qc)
+
+
+def from_qiskit(qc, n_qubits: int | None = None) -> Circuit:
+    """Convert a (transpiled) Qiskit circuit object to the IR, gate by gate."""
+    from ..circuit import GATE_SPECS
+    gates = []
+    for ins in qc.data:
+        op = ins.operation
+        if op.name in ("barrier", "measure", "delay", "reset"):
+            continue
+        name = {"u": "u3"}.get(op.name, op.name)
+        if name not in GATE_SPECS:
+            raise ValueError(f"unsupported gate from Qiskit: {op.name}")
+        qs = tuple(qc.find_bit(q).index for q in ins.qubits)
+        gates.append(Gate(name, qs, tuple(float(p) for p in op.params)))
+    return Circuit(n_qubits or qc.num_qubits, gates)
 
 
 def run_tket(circ: Circuit, mode: str = "cliffordt"):

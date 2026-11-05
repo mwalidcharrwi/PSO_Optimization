@@ -1,0 +1,2 @@
+circuit,used_qubits,method,seed,budget,time,ecr,sx,x,rz,oneq_phys,gates,depth,twoq_depth,coupling_ok,verified,note
+qft_16,16,hypso_w1,0,900.0,900.8,541,823,0,932,823,2296,644,229,True,equivalent,

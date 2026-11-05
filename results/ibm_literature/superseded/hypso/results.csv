@@ -1,0 +1,11 @@
+circuit,used_qubits,method,seed,budget,time,ecr,sx,x,rz,oneq_phys,gates,depth,twoq_depth,coupling_ok,verified,note
+mult_8,8,hypso,0,900.0,900.2,157,293,0,355,293,805,462,131,True,equivalent,
+heisenberg_8,8,hypso,0,900.0,900.1,283,422,3,483,425,1191,356,111,True,equivalent,
+add_17,17,hypso,0,900.0,900.2,389,584,3,671,587,1647,530,195,True,equivalent,
+qae_17,17,hypso,0,900.0,900.6,413,703,3,803,706,1922,567,190,True,equivalent,
+qft_16,16,hypso,0,900.0,900.7,511,745,0,862,745,2118,594,212,True,equivalent,
+hubbard_8,8,hypso,0,900.0,901.9,935,1291,0,1473,1291,3699,2015,740,True,equivalent,
+hhl_8,8,hypso,0,900.0,901.1,324,660,0,793,660,1777,1185,295,True,equivalent,
+heisenberg_32,32,hypso,0,900.0,906.5,3465,4722,4,4885,4726,13076,2147,770,True,pending,
+grover_10,10,hypso,0,900.0,925.2,13530,15941,0,20023,15941,49494,29066,9388,True,equivalent,
+hubbard_18,31,hypso,0,900.0,949.7,28232,39575,0,40671,39575,108478,43779,17114,True,pending,

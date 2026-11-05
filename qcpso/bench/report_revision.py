@@ -1,0 +1,393 @@
+"""Report for the revision runs (results/ibm_revision), with the original runs
+(results/ibm_literature) as reference.
+
+    python -m qcpso.bench.report_revision > results/ibm_revision/REPORT_TABLES.md
+
+Definitions (fixed before the runs finished):
+* HyPSO-QCO = the resynthesis-only configuration ``hypso_rs`` (pre-specified for
+  mapped circuits): fresh seeds 1-3 on the seven smaller circuits (mean +- sd),
+  seed 1 on the three large circuits.
+* GUOQ 15 min = seed 0 (the 900 s snapshot of the 60-minute run) and seeds 1, 2
+  (15-minute runs) on the seven smaller circuits; seed 0 on the large ones.
+  GUOQ 60 min = the 60-minute seed-0 run.  "GUOQ best" = the best of all GUOQ
+  15-minute runs, including the original run of the paper.
+* TKET -> GUOQ (large circuits): TKET, then GUOQ for the rest of the 15 minutes.
+* BQSKit deletion: BQSKit's deletion-only workflow, 15 min, 4 workers.
+"""
+from __future__ import annotations
+
+import csv
+import glob
+import json
+import math
+import os
+import sys
+from collections import defaultdict
+
+import numpy as np
+
+REV = "results/ibm_revision"
+LIT = "results/ibm_literature"
+CIRCUITS = ["mult_8", "heisenberg_8", "add_17", "qae_17", "qft_16", "hubbard_8", "hhl_8", "heisenberg_32",
+            "grover_10", "hubbard_18"]
+SMALL = CIRCUITS[:7]
+LARGE = CIRCUITS[7:]
+METRICS = ("ecr", "gates", "oneq_phys", "depth")
+
+
+def _rows(pattern):
+    out = []
+    for p in glob.glob(pattern, recursive=True):
+        if "superseded" in p:
+            continue
+        with open(p) as fh:
+            for r in csv.DictReader(fh):
+                if r.get("ecr") not in (None, ""):
+                    r["_src"] = p
+                    out.append(r)
+    return out
+
+
+def collect():
+    """{tool: {circuit: [metric dicts, one per run]}} with the tool definitions above."""
+    lit = _rows(os.path.join(LIT, "**", "results.csv"))
+    rev = _rows(os.path.join(REV, "**", "results.csv"))
+    runs = defaultdict(lambda: defaultdict(list))
+
+    def add(tool, r):
+        m = {k: float(r[k]) for k in METRICS}
+        m.update(seed=int(r["seed"]), time=float(r["time"] or 0), coupling_ok=r.get("coupling_ok"),
+                 note=r.get("note", ""))
+        # the last row wins for a repeated (tool, circuit, seed) run
+        lst = runs[tool][r["circuit"]]
+        lst[:] = [x for x in lst if x["seed"] != m["seed"]] + [m]
+
+    for r in lit:
+        if r["method"] == "tket_mp":
+            add("tket", r)
+        elif r["method"] == "queso":
+            add("queso", r)
+        elif r["method"] == "guoq":
+            add("guoq_orig", r)
+        elif r["method"] == "hypso" and "/hypso/" in r["_src"]:
+            add("hypso_v2_full", r)
+    for r in rev:
+        m, b, s = r["method"], r.get("budget", ""), int(r["seed"])
+        if m == "guoq" and b.startswith("3600"):
+            add("guoq60", r)
+        elif m == "guoq@900" and s == 0:
+            add("guoq15", r)
+        elif m == "guoq" and b.startswith("900") and s in (1, 2):
+            add("guoq15", r)
+        elif m == "guoq@1800":
+            add("guoq30", r)
+        elif m in ("tket_guoq", "tket_guoq_full", "hypso_rs", "hypso_rs_nosparse", "bqskit_del", "bqskit_del2",
+                   "ibm_ai"):
+            add(m, r)
+    for c in CIRCUITS:   # GUOQ best of all 15-minute runs
+        pool = runs["guoq15"].get(c, []) + runs["guoq_orig"].get(c, [])
+        if pool:
+            runs["guoq_best"][c] = [min(pool, key=lambda x: (x["ecr"], x["gates"]))]
+    return runs
+
+
+def stat(runs, tool, c, k="ecr"):
+    v = [x[k] for x in runs.get(tool, {}).get(c, [])]
+    if not v:
+        return None
+    return float(np.mean(v)), (float(np.std(v, ddof=1)) if len(v) > 1 else 0.0), len(v)
+
+
+def fmt(ms, sd=True):
+    if ms is None:
+        return "–"
+    m, s, n = ms
+    mm = f"{m:,.0f}" if abs(m - round(m)) < 1e-9 else f"{m:,.1f}"
+    return mm + (f" ± {s:,.1f}" if sd and n > 1 else "")
+
+
+def inputs():
+    from .report_literature import input_metrics
+    return input_metrics()
+
+
+def wilcoxon(a, b):
+    from scipy.stats import wilcoxon as w
+    d = np.asarray(a) - np.asarray(b)
+    if not np.any(np.abs(d) > 1e-9):
+        return float("nan")
+    return float(w(d, alternative="less").pvalue)
+
+
+def _tex_int(v):
+    return f"{v:,.0f}".replace(",", "{,}")
+
+
+def latex_table1(runs, inp, bq):
+    """Table I of the revised paper (table*): ECR / total gates per tool, mean +- sd of the ECR count
+    where a tool ran several seeds; fewest ECR and fewest total gates in bold; margin = ECR reduction of
+    HyPSO-QCO relative to the best other result on the circuit at any budget."""
+    cols = [("tket", "TKET"), ("queso", "QUESO"), (bq, "BQSKit del."),   # IBM AI: in the text (width)
+            ("guoq15", "GUOQ 15\\,min"), ("guoq60", "GUOQ 60\\,min"), ("tket_guoq", "TKET$\\to$GUOQ"),
+            ("hypso_rs", "HyPSO-QCO")]
+    cols = [(t, lab) for t, lab in cols if runs.get(t)]
+    lines = ["% Generated by `python -m qcpso.bench.report_revision --latex paper/tables_rev.tex` -- do not edit.",
+             "% Requires \\usepackage{booktabs}.", "",
+             "\\begin{table*}[t]\\centering\\scriptsize\\setlength{\\tabcolsep}{2.3pt}",
+             "\\caption{ECR / total native gate count after re-optimisation (15\\,min per circuit for the anytime "
+             "tools, GUOQ also 60\\,min; mean\\,$\\pm$\\,sd of the ECR count over three seeds on the seven smaller "
+             "circuits, one seed on the large ones; fewest ECR gates and fewest total gates in bold). The input is "
+             "Qiskit~O3's transpilation for a 127-qubit IBM Eagle device; $q$: used qubits. Margin: ECR reduction of "
+             "HyPSO-QCO relative to the best other result on the circuit at any budget. HyPSO-QCO won on all ten "
+             "circuits against each tool in ECR gates (one-sided Wilcoxon $p = 0.001$) and in total gates against "
+             "each tool but QUESO ($p = 0.001$; QUESO: 9/0/1, $p = 0.002$).}",
+             "\\label{tab:main}",
+             "\\begin{tabular}{l r r " + "r" * len(cols) + " r}\\toprule",
+             "circuit & $q$ & input (Qiskit O3) & " + " & ".join(lab for _, lab in cols) + " & margin \\\\\\midrule"]
+    margins = []
+    for c in CIRCUITS:
+        st = {t: (stat(runs, t, c, "ecr"), stat(runs, t, c, "gates")) for t, _ in cols}
+        have = {t: v for t, v in st.items() if v[0]}
+        best_e = min(v[0][0] for v in have.values())
+        best_g = min(v[1][0] for v in have.values())
+        cells = []
+        for t, _ in cols:
+            e, g = st[t]
+            if not e:
+                cells.append("--")
+                continue
+            es = _tex_int(e[0])
+            if e[2] > 1:   # integer mean +- sd (the report tables keep one decimal)
+                es += f"$\\pm${e[1]:.0f}"
+            gs = _tex_int(g[0])
+            if abs(e[0] - best_e) < 1e-9:
+                es = f"\\textbf{{{es}}}"
+            if abs(g[0] - best_g) < 1e-9:
+                gs = f"\\textbf{{{gs}}}"
+            cells.append(f"{es}\\,/\\,{gs}")
+        h = stat(runs, "hypso_rs", c)
+        others = [v[0][0] for t, v in have.items() if t != "hypso_rs"]
+        m = 1 - h[0] / min(others) if (h and others) else None
+        if m is not None:
+            margins.append(m)
+        lines.append(f"{c.replace('_', chr(92) + '_')} & {inp[c]['used_qubits']} & "   # roman: fits 7.16 in
+                     f"{_tex_int(inp[c]['ecr'])}\\,/\\,{_tex_int(inp[c]['gates'])} & " + " & ".join(cells) +
+                     (f" & {100 * m:.1f}\\% \\\\" if m is not None else " & -- \\\\"))
+    red = []
+    for t, _ in cols:
+        re_ = [1 - stat(runs, t, c, "ecr")[0] / inp[c]["ecr"] for c in CIRCUITS if stat(runs, t, c, "ecr")]
+        rg = [1 - stat(runs, t, c, "gates")[0] / inp[c]["gates"] for c in CIRCUITS if stat(runs, t, c, "gates")]
+        note = "" if len(re_) == len(CIRCUITS) else f" ({len(re_)})"
+        red.append(f"{100 * np.mean(re_):.1f}\\%\\,/\\,{100 * np.mean(rg):.1f}\\%{note}" if re_ else "--")
+    lines += ["\\midrule", "mean reduction & & -- & " + " & ".join(red) + f" & {100 * np.mean(margins):.1f}\\% \\\\",
+              "\\bottomrule\\end{tabular}\\end{table*}", ""]
+    return "\n".join(lines)
+
+
+def main(argv=None):
+    argv = list(argv or [])
+    runs = collect()
+    inp = inputs()
+    bq = "bqskit_del2" if len(runs.get("bqskit_del2", {})) > len(runs.get("bqskit_del", {})) else "bqskit_del"
+    if "--latex" in argv:
+        path = argv[argv.index("--latex") + 1]
+        with open(path, "w") as fh:
+            fh.write(latex_table1(runs, inp, bq))
+        print("wrote", path)
+        return
+    tools = [("tket", "TKET"), ("queso", "QUESO"), (bq, "BQSKit deletion"), ("ibm_ai", "IBM AI synthesis"),
+             ("guoq15", "GUOQ 15 min"), ("guoq60", "GUOQ 60 min"), ("tket_guoq", "TKET→GUOQ"),
+             ("hypso_rs", "**HyPSO-QCO**")]
+    tools = [(t, lab) for t, lab in tools if runs.get(t)]
+    out = ["# Revision results (generated by `python -m qcpso.bench.report_revision`)", "",
+           f"BQSKit deletion row: `{bq}` (instantiation level {2 if bq.endswith('2') else 1}).", ""]
+    for k, title in (("ecr", "ECR gates"), ("gates", "Total native gates"), ("oneq_phys", "Physical 1q gates (sx+x)")):
+        out += [f"## {title} (mean ± sd over seeds where n > 1)", "",
+                "| circuit | input | " + " | ".join(lab for _, lab in tools) + " |",
+                "|---|---:|" + "---:|" * len(tools)]
+        for c in CIRCUITS:
+            cells = [fmt(stat(runs, t, c, k)) for t, _ in tools]
+            out.append(f"| {c} | {inp[c][k]:,} | " + " | ".join(cells) + " |")
+        reds = []
+        for t, _ in tools:
+            rr = [1 - stat(runs, t, c, k)[0] / inp[c][k] for c in CIRCUITS if stat(runs, t, c, k)]
+            reds.append(f"{100 * np.mean(rr):.1f} % ({len(rr)})" if rr else "–")
+        out += ["| mean reduction (circuits) | | " + " | ".join(reds) + " |", ""]
+
+    # margins and head-to-head (ECR), HyPSO-QCO mean vs each tool's mean
+    if runs.get("hypso_rs"):
+        out += ["## HyPSO-QCO (mean) vs each tool (mean), ECR", "",
+                "| vs | circuits | W/T/L | one-sided Wilcoxon p | mean ECR margin |", "|---|---:|---|---:|---:|"]
+        for t, lab in tools + [("guoq_best", "GUOQ best single 15-min run"), ("guoq_orig", "GUOQ (paper run)"),
+                               ("hypso_v2_full", "HyPSO-QCO v2 full config (paper)")]:
+            if t == "hypso_rs" or not runs.get(t):
+                continue
+            cs = [c for c in CIRCUITS if stat(runs, t, c) and stat(runs, "hypso_rs", c)]
+            a = [stat(runs, "hypso_rs", c)[0] for c in cs]
+            b = [stat(runs, t, c)[0] for c in cs]
+            w = sum(x < y - 1e-9 for x, y in zip(a, b))
+            l_ = sum(x > y + 1e-9 for x, y in zip(a, b))
+            marg = np.mean([1 - x / y for x, y in zip(a, b)]) * 100
+            out.append(f"| {lab} | {len(cs)} | {w}/{len(cs) - w - l_}/{l_} | {wilcoxon(a, b):.4f} | {marg:.1f} % |")
+        out.append("")
+        # per-circuit margin over the best other tool at 15 minutes
+        others15 = [t for t, _ in tools if t not in ("hypso_rs", "guoq60")]
+        out += ["## Margin over the best other tool (ECR)", "",
+                "| circuit | HyPSO-QCO mean | best other at 15 min | margin | GUOQ 60 min | margin vs GUOQ 60 | "
+                "best other at any budget | margin (any budget) |",
+                "|---|---:|---|---:|---:|---:|---|---:|"]
+        margins, margins60, margins_any = [], [], []
+        for c in CIRCUITS:
+            h = stat(runs, "hypso_rs", c)
+            cand = [(stat(runs, t, c)[0], lab) for t, lab in tools if t in others15 and stat(runs, t, c)]
+            if not h or not cand:
+                continue
+            bv, bl = min(cand)
+            g60 = stat(runs, "guoq60", c)
+            margins.append(1 - h[0] / bv)
+            if g60:
+                margins60.append(1 - h[0] / g60[0])
+            av, al = min(cand + ([(g60[0], "GUOQ 60 min")] if g60 else []))
+            margins_any.append(1 - h[0] / av)
+            out.append(f"| {c} | {h[0]:,.1f} | {bv:,.1f} ({bl}) | {100 * (1 - h[0] / bv):.1f} % | "
+                       f"{fmt(g60)} | {'–' if not g60 else f'{100 * (1 - h[0] / g60[0]):.1f} %'} | "
+                       f"{av:,.1f} ({al}) | {100 * (1 - h[0] / av):.1f} % |")
+        if margins:
+            out.append(f"| mean | | | {100 * np.mean(margins):.1f} % | | "
+                       f"{100 * np.mean(margins60):.1f} % | | {100 * np.mean(margins_any):.1f} % |" if margins60 else "")
+        out.append("")
+        # headline numbers: geometric-mean ECR ratio and ECR gates removed
+        out += ["## Headline numbers (ECR, means over seeds)", "",
+                "| tool | circuits | mean reduction | geometric-mean ECR ratio | ECR gates removed |", "|---|---:|---:|---:|---:|"]
+        for t, lab in tools:
+            cs = [c for c in CIRCUITS if stat(runs, t, c)]
+            if not cs:
+                continue
+            ratios = [stat(runs, t, c)[0] / inp[c]["ecr"] for c in cs]
+            removed = sum(inp[c]["ecr"] - stat(runs, t, c)[0] for c in cs)
+            out.append(f"| {lab} | {len(cs)} | {100 * (1 - np.mean(ratios)):.1f} % | "
+                       f"{math.exp(np.mean(np.log(ratios))):.3f} | {removed:,.0f} |")
+        # estimated success probability, Eq. (2) of the paper: (1 - 7e-3)^n_ecr (1 - 2.5e-4)^n_1q
+        def psucc(e, q):
+            return (1 - 7e-3) ** e * (1 - 2.5e-4) ** q
+        out += ["", "## Estimated success probability (Eq. 2; means over seeds)", "",
+                "| circuit | input | " + " | ".join(lab for _, lab in tools) + " | best |",
+                "|---|---:|" + "---:|" * len(tools) + "---|"]
+        for c in CIRCUITS:
+            vals = {}
+            for t, lab in tools:
+                e, q = stat(runs, t, c, "ecr"), stat(runs, t, c, "oneq_phys")
+                if e and q:
+                    vals[lab] = psucc(e[0], q[0])
+            best = max(vals, key=vals.get) if vals else "–"
+            out.append(f"| {c} | {psucc(inp[c]['ecr'], inp[c]['oneq_phys']):.3g} | " +
+                       " | ".join(f"{vals[lab]:.3g}" if lab in vals else "–" for _, lab in tools) + f" | {best} |")
+        hs = [stat(runs, "hypso_rs", c) for c in SMALL if stat(runs, "hypso_rs", c)]
+        if hs:
+            out.append("")
+            out.append(f"Largest HyPSO-QCO seed-to-seed sd (ECR): {max(h[1] for h in hs):.1f}; "
+                       f"largest relative sd: {100 * max(h[1] / h[0] for h in hs):.1f} %.")
+        out.append("")
+        # worst HyPSO-QCO seed vs best GUOQ run
+        out += ["## Worst HyPSO-QCO seed vs best GUOQ run (ECR), seven smaller circuits", "",
+                "| circuit | HyPSO-QCO seeds | worst | GUOQ 15-min runs | best | GUOQ 60 min |", "|---|---|---:|---|---:|---:|"]
+        for c in SMALL:
+            hs = sorted(int(x["ecr"]) for x in runs["hypso_rs"].get(c, []))
+            gs = sorted(int(x["ecr"]) for x in runs.get("guoq15", {}).get(c, []) + runs.get("guoq_orig", {}).get(c, []))
+            g60 = stat(runs, "guoq60", c)
+            if hs and gs:
+                out.append(f"| {c} | {', '.join(map(str, hs))} | {max(hs)} | {', '.join(map(str, gs))} | {min(gs)} | "
+                           f"{fmt(g60)} |")
+        out.append("")
+
+    # Z-slot sparsification ablation
+    if runs.get("hypso_rs_nosparse"):
+        out += ["## Z-slot sparsification off (seed 1) vs on (seed 1)", "",
+                "| circuit | ECR on / off | sx+x on / off | gates on / off |", "|---|---|---|---|"]
+        acc = defaultdict(list)
+        for c in SMALL:
+            on = [x for x in runs["hypso_rs"].get(c, []) if x["seed"] == 1]
+            off = runs["hypso_rs_nosparse"].get(c, [])
+            if on and off:
+                on, off = on[0], off[0]
+                out.append(f"| {c} | {on['ecr']:.0f} / {off['ecr']:.0f} | {on['oneq_phys']:.0f} / {off['oneq_phys']:.0f} | "
+                           f"{on['gates']:.0f} / {off['gates']:.0f} |")
+                for k in ("ecr", "oneq_phys", "gates"):
+                    acc[k].append(1 - on[k] / off[k])
+        if acc:
+            out.append("| mean change with sparsification | " + " | ".join(
+                f"{-100 * np.mean(acc[k]):+.1f} %" for k in ("ecr", "oneq_phys", "gates")) + " |")
+        out.append("")
+
+    # Proposition 1(c): lineage of every hypso_rs output
+    lin_rows = []
+    for p in sorted(glob.glob(os.path.join(REV, "hypso_rs", "optimized", "*.json"))):
+        d = json.load(open(p))
+        lin = d.get("lineage") or {}
+        name, _, seed = os.path.basename(p)[:-5].split("__")
+        tb = d.get("tket_blocks") or []
+        lin_rows.append((name, seed, lin.get("blocks"), lin.get("eps_sum"), lin.get("eps_max"), len(tb)))
+    if lin_rows:
+        bounds = {}
+        bpath = os.path.join(REV, "tket_block_bounds.json")
+        if os.path.exists(bpath):
+            bounds = json.load(open(bpath))
+        out += ["## Proposition 1(c): accepted block replacements behind each output", "",
+                "| circuit | seed | N (fitted blocks) | Σ ε_j (re-simulated) | max ε_j | TKET blocks | Σ ε (TKET, exact) | bound |",
+                "|---|---|---:|---:|---:|---:|---:|---:|"]
+        for name, seed, n, es, em, nt, in lin_rows:
+            tb = bounds.get(f"{name}__{seed}", {})
+            te = tb.get("eps_sum")
+            tot = (es or 0) + (te or 0)
+            f2 = (lambda v: "–" if v is None else f"{v:.2e}")
+            out.append(f"| {name} | {seed} | {n} | {f2(es)} | {f2(em)} | {nt} | {f2(te)} | {tot:.2e} |")
+        out.append("")
+
+    # BQSKit details
+    if runs.get(bq):
+        import re
+        out += ["## BQSKit deletion details", "",
+                "| circuit | time (s) | sweeps | CX after block size 3 / 4 / 5 (compact {u3, cx} form) | ECR |",
+                "|---|---:|---:|---|---:|"]
+        for c in CIRCUITS:
+            lg = os.path.join(REV, "bqskit_del", f"{c}_{bq}_s0.log")
+            r = runs[bq].get(c)
+            if not os.path.exists(lg):
+                continue
+            last = {}
+            n = 0
+            for line in open(lg):
+                m = re.search(r"sweep (\d+): cx (\d+) -> (\d+).*\[block (\d+)\]", line)
+                if m:
+                    n = int(m.group(1))
+                    last[int(m.group(4))] = int(m.group(3))
+            per = " / ".join(str(last.get(b, "–")) for b in (3, 4, 5))
+            out.append(f"| {c} | {r[0]['time'] if r else '–'} | {n} | {per} | {r[0]['ecr']:.0f} |" if r else
+                       f"| {c} | – | {n} | {per} | – |")
+        out.append("")
+
+    # deviations
+    vpath = os.path.join(REV, "verification.csv")
+    if os.path.exists(vpath):
+        dev = defaultdict(list)
+        unchecked = defaultdict(list)
+        for r in csv.DictReader(open(vpath)):
+            if r.get("deviation") in (None, ""):
+                unchecked[r["method"]].append(r["circuit"])
+                continue
+            dev[r["method"]].append((float(r["deviation"]), r["circuit"], r["check"]))
+        out += ["## Verification (largest deviation per method)", "",
+                "| method | checked outputs | max deviation | circuit | approximate (≥ 1e-6) | unchecked |",
+                "|---|---:|---:|---|---|---|"]
+        for m in sorted(set(dev) | set(unchecked)):
+            v = dev.get(m, [])
+            d, c, ch = max(v) if v else (float("nan"), "–", "–")
+            approx = sorted({f"{cc} ({dd:.1e})" for dd, cc, _ in v if dd >= 1e-6})
+            out.append(f"| {m} | {len(v)} | {d:.1e} | {c} ({ch}) | {', '.join(approx) or '–'} | "
+                       f"{', '.join(sorted(set(unchecked.get(m, [])))) or '–'} |")
+        out.append("")
+    print("\n".join(out))
+
+
+if __name__ == "__main__":  # pragma: no cover
+    main(sys.argv[1:])

@@ -23,14 +23,28 @@ categorical PSO for nominal decisions, hybrid constriction/quantum-behaved
 PSO for continuous genes, a provenance-aligned genome, elitist seeding with
 the deterministic compiler, and a provenance-guided memetic local search.
 
+**v2 (`ibm` mode, already-mapped hardware circuits)** adds a memetic phase
+to the swarm.  The swarm's distinct elites are refined by
+*connectivity-preserving numerical resynthesis*: convex 3–5-qubit blocks
+lose CNOTs inside their own CNOT skeleton, so the device mapping cannot
+change.  Single-qubit slots are sparsified to virtual Rz gates, and
+partition strategies are chosen adaptively under a wall-clock budget.
+On the supplied benchmarks, already transpiled by Qiskit at optimisation
+level 3, v2 has fewer two-qubit gates than GUOQ, QUESO and TKET on every
+circuit (see below).
+
 * Method: [docs/FRAMEWORK.md](docs/FRAMEWORK.md)
 * Literature survey and research gaps: [docs/RELATED_WORK.md](docs/RELATED_WORK.md)
 * Novel directions (implemented and open): [docs/RESEARCH_DIRECTIONS.md](docs/RESEARCH_DIRECTIONS.md)
 * Benchmark results: [results/](results/)
+* **Honest assessment of what the proposed approach contributes (and what it does not):**
+  [docs/CONTRIBUTION_ASSESSMENT.md](docs/CONTRIBUTION_ASSESSMENT.md)
 
 ## Results on the built-in suites
 
-These results come from the final code, with 3 seeds per search method.
+These results cover the `cliffordt`, `continuous` and `hardware` modes,
+which v2 does not change (its memetic phase is part of `ibm` mode only).
+They use 3 seeds per search method.
 Every output of the main experiments is verified equivalent to its input by
 simulation.  Full tables, per-circuit numbers and the protocol are in
 [results/](results/).
@@ -68,11 +82,79 @@ Enabling free rotation placement costs 1.6 % (p = 0.016), so it is opt-in.
 Seeding, memetic search, pass-schedule genes, guidance and topology are
 neutral at this budget (< 1 %, not significant).
 
+## Results on the supplied benchmarks (`test_circuits_new`): comparison with related work
+
+The ten supplied circuits are already transpiled by Qiskit at optimisation
+level 3 for a 127-qubit IBM device ({rz, sx, x, ecr}), so the input is the
+Qiskit O3 result and Qiskit is not compared separately.  HyPSO-QCO **v2**
+(`ibm` mode) and the related tools re-optimise them under one contract:
+* equivalence on the same physical qubits;
+* two-qubit gates only on pairs coupled in the input;
+* native ECR directions.
+
+The anytime tools each got a **15-minute budget per circuit** on the same
+4-core machine.  Report: [results/ibm_literature/REPORT.md](results/ibm_literature/REPORT.md);
+protocol: [results/ibm_literature/README.md](results/ibm_literature/README.md).
+
+**ECR count** (fewer is better):
+
+| circuit | input (Qiskit O3) | TKET† | QUESO | GUOQ | HyPSO-QCO v1 | **HyPSO-QCO v2** |
+|---|---:|---:|---:|---:|---:|---:|
+| mult_8 | 311 | 299 | 311 | 199 | 309 | **153** |
+| heisenberg_8 | 420 | 420 | 420 | 326 | 420 | **276** |
+| add_17 | 499 | 495 | 499 | 421 | 491 | **390** |
+| qae_17 | 541 | 537 | 541 | 428 | 527 | **420** |
+| qft_16 | 614 | 610 | 614 | 536 | 604 | **519** |
+| hubbard_8 | 1,344 | 1,251 | 1,336 | 1,165 | 1,334 | **930** |
+| hhl_8 | 2,377 | 2,365 | 2,377 | 500 | 2,375 | **337** |
+| heisenberg_32 | 3,942 | 3,834 | 3,942 | 3,878 | 3,882 | **3,328** |
+| grover_10 | 16,397 | 14,453 | 16,397 | 16,393 | 16,395 | **13,543** |
+| hubbard_18 | 33,958 | 29,547 | 33,926 | 33,829 | 30,415 | **27,559** |
+| mean reduction | – | 4.1 % | 0.1 % | 20.2 % | 1.9 % | **31.3 %** |
+
+† TKET's connectivity-preserving passes.  GUOQ ran with coupling-aware
+resynthesis (`third_party/`).  QUESO used its authors' settings.
+
+* **ECRs:** HyPSO-QCO v2 has the fewest on every circuit, against every
+  tool (10/0/0 each; one-sided Wilcoxon p = 0.001).
+* **Total gates:** the fewest on 9 of 10 circuits.  The mean reduction vs
+  the input is 55.6 %, against 43.4 % for GUOQ and 36.2 % for TKET.  On
+  `heisenberg_8` QUESO has 12 fewer gates (1,217 vs 1,229) and fewer
+  physical single-qubit gates (330 vs 442), but keeps all 420 ECRs (v2: 276).
+* **Compute-matched run:** GUOQ searches in one thread.  With one
+  resynthesis worker, v2 has fewer ECRs than GUOQ on 6 of the 7 circuits of
+  up to 17 qubits.  On `qft_16` GUOQ has 5 fewer (536 vs 541).  v2 has fewer
+  total gates on all 7.
+* **Verification:** every output was checked against its input by
+  simulation, or by a Choi-state MPS miter for `heisenberg_32`.  HyPSO-QCO's
+  outputs deviate by at most 5.7e-8 (numerically exact).  GUOQ's `qft_16`
+  output deviates by 5.4e-6.
+
+The v2 gains come from the new **memetic phase**:
+connectivity-preserving resynthesis of multi-qubit blocks by CNOT deletion
+(see [docs/FRAMEWORK.md §7b](docs/FRAMEWORK.md)), **not from the particle
+swarm**.  An ablation gives the whole 15-minute budget to the memetic phase,
+starting from the deterministic seed.  It is even better: 38.3 % mean ECR
+reduction vs 37.3 % on the 7 smaller circuits, and fewer ECRs on 5 of 7.
+For already-mapped circuits and short budgets, use `--resynth-share 1.0`
+(details in the report and in
+[docs/CONTRIBUTION_ASSESSMENT.md](docs/CONTRIBUTION_ASSESSMENT.md)).
+
+```bash
+python -m qcpso optimize mapped.qasm -o out.qasm --mode ibm --time-limit 900 --resynth-workers 4
+# memetic phase only (best at short budgets, see the ablation):
+python -m qcpso optimize mapped.qasm -o out.qasm --mode ibm --time-limit 900 --resynth-share 1.0
+```
+
+Results of v1 (no memetic phase) on the same circuits, with GA, SA and
+standard PSO on the same decoder, are in
+[results/ibm_testset/REPORT.md](results/ibm_testset/REPORT.md).
+
 ## Installation
 
 ```bash
 pip install -r requirements.txt     # numpy, scipy (+ optional qiskit, pytket, pyzx, pytest)
-python -m pytest -q tests           # 101 tests: lowering, pass soundness, I/O, routing, framework
+python -m pytest -q tests           # 127 tests: lowering, pass soundness, I/O, routing, framework, resynthesis
 ```
 
 ## Quick start
@@ -98,7 +180,9 @@ print(res.summary())      # lowered -> greedy -> HyPSO metrics, equivalence chec
 
 Modes: `cliffordt` ({H, X, Rz, CNOT}; T-count reported), `continuous`
 ({U3, CNOT}), `hardware` (coupling maps `ibm_tokyo`, `ibm_qx5`,
-`ibm_falcon27`, `line_N`, `ring_N`, `grid_RxC`, `full_N`).  Objectives:
+`ibm_falcon27`, `line_N`, `ring_N`, `grid_RxC`, `full_N`), and `ibm`, which
+re-optimises circuits already transpiled to IBM's native {rz, sx, x, ecr}
+while keeping their qubit mapping and ECR directions.  Objectives:
 `gates`, `cx`, `t`, `depth`, `fidelity`.
 
 ## Evaluating on your own benchmark circuits

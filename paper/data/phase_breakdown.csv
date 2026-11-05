@@ -1,0 +1,11 @@
+circuit,input_ecr,swarm_evals,after_phase1_ecr,elites_refined,best_elite_ecr,after_deepening_ecr,final_ecr,memetic_rounds,large_mode,noswarm_seed_ecr,noswarm_rounds,noswarm_final_ecr
+mult_8,311,64,280,3,163,153,153,185,0,311,1534,156
+heisenberg_8,420,118,420,3,276,,276,276,0,420,1016,266
+add_17,499,54,471,3,404,390,390,227,0,489,668,389
+qae_17,541,48,521,3,427,420,420,122,0,532,750,413
+qft_16,614,54,599,3,536,519,519,145,0,614,251,519
+hubbard_8,1344,21,1207,1,930,,930,71,0,1321,179,915
+hhl_8,2377,7,2259,3,337,,337,80,0,2251,485,275
+heisenberg_32,3942,1,3842,1,3328,,3328,35,1,,,
+grover_10,16397,1,14462,1,13543,,13543,6,1,,,
+hubbard_18,33958,1,29614,1,27559,,27559,5,1,,,

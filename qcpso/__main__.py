@@ -2,6 +2,7 @@
 
     python -m qcpso optimize input.qasm -o output.qasm --mode cliffordt --budget 1000
     python -m qcpso optimize input.qasm --mode hardware --device ibm_tokyo
+    python -m qcpso optimize mapped.qasm -o out.qasm --mode ibm --time-limit 900 --resynth-workers 4
     python -m qcpso bench --suite builtin --mode cliffordt      (see qcpso.bench.run)
 """
 from __future__ import annotations
@@ -20,7 +21,7 @@ def _optimize(argv):
     ap = argparse.ArgumentParser(prog="qcpso optimize")
     ap.add_argument("input", help=".qasm / .qc / .real file")
     ap.add_argument("-o", "--output", help="write optimised OpenQASM 2.0 here")
-    ap.add_argument("--mode", default="cliffordt", choices=["cliffordt", "continuous", "hardware"])
+    ap.add_argument("--mode", default="cliffordt", choices=["cliffordt", "continuous", "hardware", "ibm"])
     ap.add_argument("--objective", default=None, choices=list(OBJECTIVES))
     ap.add_argument("--budget", type=int, default=1000, help="unique circuit evaluations")
     ap.add_argument("--time-limit", type=float, default=None, help="seconds")
@@ -29,6 +30,11 @@ def _optimize(argv):
     ap.add_argument("--workers", type=int, default=1)
     ap.add_argument("--device", default="ibm_tokyo", help="hardware mode device")
     ap.add_argument("--json", action="store_true", help="print metrics as JSON")
+    ap.add_argument("--resynth-workers", type=int, default=4, help="ibm mode: block resynthesis processes")
+    ap.add_argument("--no-resynth", action="store_true", help="ibm mode: swarm phase only (no memetic phase)")
+    ap.add_argument("--resynth-share", type=float, default=0.75,
+                    help="ibm mode: share of --time-limit for the memetic phase (1.0 = memetic only, "
+                         "recommended for mapped circuits at short budgets)")
     args = ap.parse_args(argv)
     circ = load(args.input)
     hw = None
@@ -38,13 +44,24 @@ def _optimize(argv):
     cfg = HyPSOConfig(mode=args.mode, objective=args.objective, workers=args.workers, hardware=hw,
                       pso=PSOParams(max_evals=args.budget, time_limit=args.time_limit,
                                     swarm_size=args.swarm, seed=args.seed))
+    if args.mode == "ibm":
+        # v2: the time limit covers the swarm phase and the memetic resynthesis phase
+        cfg.time_limit = args.time_limit
+        cfg.resynth = not args.no_resynth
+        cfg.resynth_workers = args.resynth_workers
+        cfg.resynth_share = args.resynth_share
+        if args.resynth_share >= 1.0:
+            cfg.elites = 1
+        if args.time_limit is not None:
+            cfg.pso.max_evals = 10 ** 9
     res = optimize(circ, cfg)
     if args.output:
         save_qasm(res.circuit, args.output)
     if args.json:
         print(json.dumps({"input": res.lowered_metrics, "greedy": res.greedy_metrics, "hypso": res.metrics,
                           "evals": res.evals, "time": res.time, "verified": res.verified,
-                          "info": {k: v for k, v in res.info.items() if k != "measure_map"}}, indent=2))
+                          "info": {k: v for k, v in res.info.items() if k not in ("measure_map", "memetic_history")}},
+                         indent=2, default=str))
     else:
         print(f"{circ.name}: {res.summary()}")
 

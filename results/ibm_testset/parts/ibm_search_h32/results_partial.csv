@@ -1,0 +1,4 @@
+circuit,n_qubits,method,seed,gates,cx,twoq,oneq,t,h,depth,twoq_depth,time,evals,verified
+heisenberg_32,127,spso,0,14746,0,3882,10864,0,0,2428,861,613.222,40,
+heisenberg_32,127,ga,0,14765,0,3882,10883,0,0,2427,861,620.887,45,
+heisenberg_32,127,sa,0,14851,0,3882,10969,0,0,2451,861,480.73,40,

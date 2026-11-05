@@ -13,7 +13,7 @@ from .commutation import commute
 _SELF_INV_1Q = {"h", "x", "y", "z"}
 _ROT = {"rz", "rx", "ry", "p", "u1"}
 _ROT_CANON = {"p": "rz", "u1": "rz"}  # equal up to global phase
-_SELF_INV_2Q = {"cx", "cz", "swap", "cy"}
+_SELF_INV_2Q = {"cx", "cz", "swap", "cy", "ecr"}
 
 
 def _wires(gates, n):
@@ -48,6 +48,9 @@ def _is_inverse_pair(a: Gate, b: Gate) -> bool:
     return False
 
 
+WINDOW = 256  # max. number of live gates skipped while sliding along a wire
+
+
 def cancel_pass(circ: Circuit) -> tuple[Circuit, bool]:
     gates = list(circ.gates)
     m = len(gates)
@@ -61,9 +64,14 @@ def cancel_pass(circ: Circuit) -> tuple[Circuit, bool]:
         if len(g.qubits) == 1:
             q = g.qubits[0]
             wl = wires[q]
-            for j in wl[pos[(i, q)] + 1:]:
+            seen = 0
+            for p_ in range(pos[(i, q)] + 1, len(wl)):
+                j = wl[p_]
                 if not alive[j]:
                     continue
+                seen += 1
+                if seen > WINDOW:
+                    break
                 h = gates[j]
                 if _is_inverse_pair(g, h):
                     alive[i] = alive[j] = False
@@ -89,9 +97,14 @@ def cancel_pass(circ: Circuit) -> tuple[Circuit, bool]:
             for q in g.qubits:
                 wl = wires[q]
                 found = None
-                for j in wl[pos[(i, q)] + 1:]:
+                seen = 0
+                for p_ in range(pos[(i, q)] + 1, len(wl)):
+                    j = wl[p_]
                     if not alive[j]:
                         continue
+                    seen += 1
+                    if seen > WINDOW:
+                        break
                     h = gates[j]
                     if _is_inverse_pair(g, h):
                         found = j

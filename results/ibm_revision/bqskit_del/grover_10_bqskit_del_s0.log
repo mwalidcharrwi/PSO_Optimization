@@ -1,0 +1,11 @@
+[bqskit-del      0s] chunk 3000 gates
+[bqskit-del    128s] sweep 1: cx 16001 -> 15884, gates 27179 -> 26472 [block 3]
+[bqskit-del    228s] sweep 2: cx 15884 -> 15870, gates 26472 -> 26372 [block 3]
+[bqskit-del    328s] sweep 3: cx 15870 -> 15867, gates 26372 -> 26336 [block 3]
+[bqskit-del    425s] sweep 4: cx 15867 -> 15866, gates 26336 -> 26327 [block 3]
+[bqskit-del    516s] sweep 5: cx 15866 -> 15866, gates 26327 -> 26324 [block 3]
+[bqskit-del    607s] sweep 6: cx 15866 -> 15864, gates 26324 -> 26319 [block 3]
+[bqskit-del    703s] sweep 7: cx 15864 -> 15862, gates 26319 -> 26313 [block 3]
+[bqskit-del    801s] sweep 8: cx 15862 -> 15861, gates 26313 -> 26311 [block 3]
+[bqskit-del    895s] sweep 9: cx 15861 -> 15860, gates 26311 -> 26308 [block 3]
+[bqskit-del    900s] sweep 10: cx 15860 -> 15860, gates 26308 -> 26308 [block 3] (deadline)

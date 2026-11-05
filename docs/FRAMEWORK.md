@@ -15,6 +15,7 @@ Three targets are supported:
 | `cliffordt` | {H, X, Rz(θ), CNOT} (Nam gate set; T-count reported) | fault-tolerant / Clifford+T benchmarks |
 | `continuous` | {U3, CNOT} (single-qubit runs fused) | NISQ devices, arbitrary rotations |
 | `hardware` | {U3, CNOT} on a coupling graph (initial/final layouts) | device-constrained compilation |
+| `ibm` | IBM native {rz, sx, x, ecr}, **fixed** existing mapping | re-optimising circuits that are already transpiled for an IBM device |
 
 ## 2. Key idea: search the space of *compilation decisions*, not circuits
 
@@ -209,7 +210,142 @@ library, the swarm can pick, per Toffoli, a network matching the layout it
 is co-evolving.  Results are verified with initial/final layouts and
 |0⟩ ancillas (`hardware/verify.py`).
 
-## 7. Complexity
+## 7. IBM-native mode (already-mapped circuits)
+
+Circuits exported by an IBM transpiler are already laid out and routed:
+every ECR acts on a coupled pair, in the device's native direction.  The
+`ibm` mode optimises them without touching the mapping.
+
+1. `ecr` is an IR gate.  The QASM reader uses it natively (instead of
+   inlining the file's `rzx`-based definition into 4 CNOTs) once the
+   definition is checked to be equivalent.  It also aliases
+   Qiskit-exported ECR variants such as `ecr_140451863465232`.
+2. **ECR lowering variants.**  A search over the 24 × 24 single-qubit
+   Cliffords finds 64 exact identities ECR = (P⊗Q)·CX·(R⊗S) per CNOT
+   orientation.  The 8 cheapest per orientation form a (2 × 8) variant site
+   for every ECR of the input, so the swarm decides how each ECR is exposed
+   to the CNOT-level passes.
+3. The usual sound passes and the 2-qubit resynthesis run on the same
+   coupled pairs, so connectivity is preserved by construction.
+4. **Native re-synthesis.**  Every CNOT is converted back to one ECR in the
+   native direction of its pair.  Among the 64 exact Clifford wrappings, the
+   one minimising the native cost of the two pending single-qubit runs is
+   chosen greedily.  Each run is then written with the fewest {rz, sx, x}
+   gates (1, 3 or 5; closed-form cost).
+5. Objective: `twoq` = (#ECR, #gates, depth).  Equivalence is checked on the
+   used qubits by simulation (≤ 20 qubits) or with MQT QCEC
+   (`qcpso/bench/qcec_verify.py`) for larger circuits.
+
+## 7b. HyPSO-QCO v2: swarm + memetic, connectivity-preserving resynthesis (ibm mode)
+
+The comparison with related work on the supplied circuits
+(`results/ibm_literature`) showed that the v1 pipeline removed few ECRs.
+TKET's Clifford rewrite rules and GUOQ's resynthesis removed far more.
+v2 keeps the swarm over compilation decisions and adds a **memetic phase**:
+connectivity-preserving numerical resynthesis, applied to the swarm's elites
+and tuned for anytime use under a wall-clock budget *T*.
+
+**Phase 1 — swarm (25 % of *T*).**
+* Genome: ECR lowering variants (§7), plus a *lowering-mode* gene (per-ECR
+  variants, or the exact greedy ECR→CX conversion `native.to_cx`), plus pass
+  schedule genes.
+* The pass library now also contains `tket`: the fixed point of TKET's
+  `KAKDecomposition` and `CliffordSimp`, both with `allow_swaps=False`
+  (`passes/tket_bridge.py`).
+  * These passes never create a new qubit interaction.
+  * TKET's `SynthesiseTket` is deliberately excluded: its single-qubit
+    squashing dropped a small rotation `rz(3.8e-4)` on `qae_17`, a
+    3.8e-4 error.
+  * Every TKET result is **checked by simulation** and discarded if it
+    deviates by more than 1e-9.
+    * Circuits with ≤ 20 used qubits are checked whole, in 6,000-gate
+      chunks when large.
+    * Wider circuits are processed inside convex blocks of ≤ 10 qubits,
+      each checked separately.  On `hubbard_18`, 465 blocks were checked
+      and none was rejected.
+  * The decoder applies `tket` only to exact circuits, before any
+    numerically synthesised block.
+* Three elite seeds: the greedy schedule; greedy ECR→CX conversion + TKET +
+  greedy schedule; variant lowering + TKET + greedy schedule.
+* Evaluation batches respect the phase deadline.
+* In time-limited runs on circuits with more than 50,000 gates, one decode
+  takes minutes, so the swarm phase is skipped and the strongest seed starts
+  phase 2.
+
+**Phase 2 — memetic resynthesis (remaining time, `memetic.py`,
+`passes/resynth.py`).**  Each *round*:
+
+1. **Partition** the current {1q, CX} circuit into convex blocks of at most
+   *k* qubits (*k* = 3, 4 or 5).  A greedy scan keeps every qubit "open" in
+   at most one block and merges open blocks only while the union fits.
+   * Variations expose different blocks in later rounds: forward or
+     reverse scan, random forced cuts, and block size.
+   * Blocks are re-inserted by contracting the DAG and topologically
+     re-linearising it.  This is correct for either scan direction, and a
+     non-convex block would show up as a cycle.
+2. **Resynthesise each block by CNOT deletion.**
+   * Template: V(x) = L_m…L_1 L_0, where L_0 is a layer of U3 gates and each
+     L_j is (U3⊗U3)·CX_j over the block's own CNOT skeleton.  Only existing
+     CNOTs are ever deleted, so the device mapping is preserved by
+     construction.
+   * The exact initial parameters come from folding every single-qubit run
+     into the U3 slot after the preceding CNOT on its qubit.
+   * Deletion is tried CNOT by CNOT in two sweeps (backward, then forward),
+     keeping every success.  After each deletion the parameters are
+     re-instantiated by Levenberg–Marquardt with an analytic, vectorised
+     Jacobian.
+   * The solver starts from the previous solution (the "warm start").  It
+     aborts on stagnation: successful runs converge in about 11 iterations
+     (median), and failures stall.
+   * A deletion is accepted if ‖V(x) − e^{iφ}U‖_F < 1e-10.
+   * Deletions that would violate a lower bound are skipped.  The bound:
+     one CNOT at most doubles the operator Schmidt rank across a
+     single-qubit cut.
+   * *Long 3-qubit blocks* (more than 20 CNOTs) are first refitted to a
+     generic alternating 20-CNOT template on the block's two coupled pairs.
+     This took `hhl_8` from 2,377 to 507 CNOTs in 36 s instead of 860 s.
+   * *Deep* strategy: two random restarts per deletion, plus deletion of
+     CNOT pairs on the same qubit pair (an odd number of CNOTs across a cut
+     can never be non-entangling).
+3. **Z-slot sparsification.**  Each U3 slot of a resynthesised block is
+   tentatively restricted to an Rz and the rest re-instantiated from the
+   warm start.  Rz is virtual on IBM hardware.  On `mult_8` this removed
+   28 % of the physical single-qubit gates.
+4. **Exact clean-up passes**, then accept the round if the CNOT count did
+   not increase.
+
+Other features of phase 2:
+* Block results are memoised by the block's gate list, so repeated
+  partitions are cheap.  Blocks are processed largest first in a process
+  pool.
+* The next strategy is chosen by adaptive operator selection: probability
+  matching on CNOTs saved per second, over the 12 (direction, cuts, size,
+  restarts) strategies.
+* The phase first refines up to three distinct swarm elites, each until it
+  stalls (every strategy has failed twice in a row).  It then *deepens* the
+  best circuit with blocks of up to 5 qubits until *T* expires.
+* The swarm's diversity therefore pays off here: different starting
+  representations lead to different local optima (for example `mult_8`:
+  173 CNOTs from one seed, 161 from the swarm's elite).
+
+**Soundness.**
+* Phase 1 is exact.  Its only external pass (TKET) is checked by
+  simulation, as described above.
+* Phase 2 is numerically exact per block (Frobenius residual < 1e-10).
+* Two run-time safety nets guard phase 2:
+  1. every replaced block's emitted gate list is re-simulated and compared
+     with the original block (tolerance 1e-8);
+  2. for circuits with ≤ 20 used qubits, every accepted memetic round is
+     checked against its predecessor by a random-state test (tolerance 1e-7).
+* A rejected step is logged and skipped.  No step was rejected in the final
+  runs.
+* The contraction-based rebuild makes block replacement correct for any
+  convex block.
+* Every output is re-verified independently afterwards: statevector
+  simulation for ≤ 20 used qubits, and the Choi-state MPS miter for larger
+  circuits where it converges.
+
+## 8. Complexity
 
 One evaluation = lowering + a constant number of linear-time passes (the
 commutation scans are bounded by wire length), i.e. roughly
@@ -217,7 +353,7 @@ O(|C| · w), where w is a small window factor.  KAK resynthesis is
 memoised per block unitary.  Memory is O(|C| + S·D) for S particles and D
 genes (D ≈ 3·#Toffolis + #rotations (capped) + slots + n_phys + 4).
 
-## 8. Using the framework
+## 9. Using the framework
 
 ```python
 from qcpso.io import load, save_qasm

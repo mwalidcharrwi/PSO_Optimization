@@ -1,0 +1,8 @@
+circuit,used_qubits,method,seed,budget,time,ecr,sx,x,rz,oneq_phys,gates,depth,twoq_depth,coupling_ok,verified,note
+mult_8,8,hypso_noswarm,0,900.0,900.3,156,292,0,353,292,801,458,128,True,equivalent,
+heisenberg_8,8,hypso_noswarm,0,900.0,900.4,291,445,1,503,446,1240,349,108,True,equivalent,
+add_17,17,hypso_noswarm,0,900.0,900.4,383,600,1,680,601,1664,527,184,True,equivalent,
+qft_16,16,hypso_noswarm,0,900.0,900.8,511,782,2,881,784,2176,603,206,True,NOT_EQUIVALENT,
+hubbard_8,8,hypso_noswarm,0,900.0,901.5,901,1135,0,1276,1135,3312,1783,705,True,equivalent,
+hhl_8,8,hypso_noswarm,0,900.0,900.6,270,545,0,665,545,1480,997,245,True,equivalent,
+qae_17,17,hypso_noswarm,0,900.0,900.5,416,691,1,805,692,1913,571,190,True,NOT_EQUIVALENT,

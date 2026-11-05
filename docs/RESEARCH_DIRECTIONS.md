@@ -22,6 +22,9 @@ item states the hypothesis and how to evaluate it with `qcpso.bench.run`.
 | A10 | **Swarm instantiation** for 2-qubit block resynthesis (inner PSO + Levenberg–Marquardt with exact Jacobian) | A global swarm stage avoids local minima of pure gradient instantiation | `passes/kak.py` |
 | A11 | **Two-timescale genome** (lazy placement genes refined only by local search) | Fine-grained genes should refine, not define, solutions | `hypso_place` vs `hypso_place_eager` |
 | A12 | **Adaptive operator selection** in the memetic search (probability matching) | Which neighbourhood pays off is circuit-family dependent | compare fixed move mix (git history) |
+| A13 (v2) | **Memetic connectivity-preserving resynthesis** of swarm elites: CNOT deletion inside block skeletons (3–5-qubit convex blocks, forward/reverse/random-cut partitions, adaptive strategy selection) | Mapped circuits hide large multi-qubit redundancy that rules and 2-qubit KAK cannot reach; deleting inside the existing skeleton keeps the device mapping | `results/ibm_literature` (vs GUOQ, QUESO, TKET, Qiskit); `hypso_noswarm` ablation |
+| A14 (v2) | **Z-slot sparsification** of resynthesised blocks | Rz is virtual on IBM hardware; re-instantiating U3 slots as Rz removes physical 1q gates at no ECR cost | `resynth_sparse=False` |
+| A15 (v2) | **PSO-seeded restarts** for hard CNOT deletions | A short swarm over template angles finds basins that uniform random restarts miss | small effect: +3 CNOTs removed vs 0 on a stalled `mult_8`, at 1.9× cost |
 
 ## B. Open directions (the next papers)
 
@@ -38,9 +41,14 @@ item states the hypothesis and how to evaluate it with `qcpso.bench.run`.
 4. **CNOT-network resynthesis passes** (Gray-synth / PMH / Steiner-Gauss)
    for {CNOT, Rz} regions, with the parity ordering and the Steiner-tree
    root choice as genes.  This is especially useful in hardware mode.
-5. **3-qubit block resynthesis** (QSearch/LEAP-style) using the swarm
-   instantiation of `passes/kak.py`, generalised to 3-qubit templates.  The
-   CNOT structure would be a categorical gene.
+5. **Structure search beyond deletion** (implemented in v2 only as
+   deletion).  Deletion never re-orders or interleaves CNOTs.  Alternating
+   templates from scratch were tried and need *more* CNOTs than the original
+   skeletons on Heisenberg blocks (8 vs 6).  A categorical "skeleton edit"
+   gene (swap two adjacent CNOTs, move a CNOT across a commuting one) with
+   warm-started re-instantiation is the natural next step.  So is swarm
+   optimisation of *where the circuit is cut into blocks*: the cut positions
+   are a large nominal decision space, currently sampled at random.
 6. **ZX-calculus rewrite scheduling**: expose the order and targets of local
    complementation / pivoting / phase-gadget fusion as genes, then extract
    with CNOT-aware heuristics.  This combines ZX-level T-count with low CNOT

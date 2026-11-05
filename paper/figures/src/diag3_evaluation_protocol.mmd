@@ -1,0 +1,28 @@
+%%{init: {"theme": "base", "flowchart": {"curve": "basis", "htmlLabels": true}, "themeVariables": {"fontFamily": "Liberation Sans, DejaVu Sans, sans-serif", "fontSize": "15px", "primaryTextColor": "#0b0b0b", "lineColor": "#52514e", "clusterBkg": "#f7f9fc", "clusterBorder": "#c3c2b7", "edgeLabelBackground": "#ffffff"}}}%%
+flowchart LR
+  B(["<b>10 IBM-Eagle circuits</b><br/>transpiled by Qiskit<br/>at optimisation level 3<br/>1.9k–357k gates · 8–32 used qubits"]):::io
+  K{"<b>common contract</b><br/>same physical qubits<br/>only coupled pairs<br/>native ECR directions"}:::chk
+  subgraph T["<b>optimisers</b> · same 4-core machine"]
+    direction TB
+    T2["TKET, connectivity-preserving"]:::tool
+    T3["QUESO · 15 min"]:::tool
+    T4["GUOQ · 15 min · coupling-aware resynthesis"]:::tool
+    T5["<b>HyPSO-QCO</b> · 15 min<br/>+ 1-worker and no-swarm variants"]:::p1
+    T2 ~~~ T3 ~~~ T4 ~~~ T5
+  end
+  subgraph E["<b>evaluation</b> · identical for every tool"]
+    direction TB
+    N["exact conversion to {rz, sx, x, ecr}"]:::p2
+    V["equivalence check of every output<br/>statevector (≤ 20 qubits) · Choi-state MPS miter"]:::p2
+    M["metrics: ECR · total gates · sx + x · depth<br/>estimated success probability"]:::p2
+    S["statistics: wins / ties / losses<br/>one-sided Wilcoxon signed-rank"]:::p2
+    N --> V --> M --> S
+  end
+  B --> K --> T --> E
+
+  classDef io fill:#f0efec,stroke:#898781,stroke-width:1px,color:#0b0b0b;
+  classDef p1 fill:#e6f0fc,stroke:#2a78d6,stroke-width:1px,color:#0b0b0b;
+  classDef p2 fill:#cde2fb,stroke:#1c5cab,stroke-width:1px,color:#0b0b0b;
+  classDef chk fill:#ffffff,stroke:#52514e,stroke-width:1px,color:#0b0b0b;
+  classDef tool fill:#ffffff,stroke:#c3c2b7,stroke-width:1px,color:#0b0b0b;
+  classDef opt fill:#ffffff,stroke:#2a78d6,stroke-width:1px,stroke-dasharray:4 3,color:#52514e;

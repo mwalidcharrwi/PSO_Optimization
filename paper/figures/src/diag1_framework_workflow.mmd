@@ -1,0 +1,34 @@
+%%{init: {"theme": "base", "flowchart": {"curve": "basis", "htmlLabels": true}, "themeVariables": {"fontFamily": "Liberation Sans, DejaVu Sans, sans-serif", "fontSize": "15px", "primaryTextColor": "#0b0b0b", "lineColor": "#52514e", "clusterBkg": "#f7f9fc", "clusterBorder": "#c3c2b7", "edgeLabelBackground": "#ffffff"}}}%%
+flowchart LR
+  IN(["<b>Mapped input circuit C</b><br/>IBM native {rz, sx, x, ecr}<br/>fixed qubit layout"]):::io
+  subgraph P1["<b>Phase 1 · particle swarm over compilation decisions</b> · 25 % of budget T"]
+    direction TB
+    S0["<b>initialise</b><br/>3 elite seeds from the deterministic compiler<br/>+ random and opposition-based particles"]:::p1
+    S1["<b>decode</b> each particle with the sound compiler<br/>ECR lowering variants → pass schedule<br/>→ clean-up → native re-synthesis<br/><i>every candidate is exactly equivalent to C</i>"]:::p1
+    S2["<b>evaluate</b> f(C′) = (ECR count, gates, depth)"]:::p1
+    S3["<b>update</b> personal / neighbourhood bests<br/>categorical PSO (nominal genes)<br/>SPSO/QPSO (continuous genes)<br/>provenance-guided local search"]:::p1
+    S0 --> S1 --> S2 --> S3
+    S3 -->|"next iteration"| S1
+  end
+  subgraph P2["<b>Phase 2 · memetic, connectivity-preserving resynthesis</b> · remaining time"]
+    direction TB
+    M0["<b>choose strategy</b> by adaptive operator selection<br/>scan direction × cuts × block size 3–5 × restarts"]:::p2
+    M1["<b>partition</b> into convex blocks"]:::p2
+    M2["<b>per block, in parallel</b><br/>delete CNOTs inside the block's own skeleton<br/>re-instantiate by Levenberg–Marquardt<br/>(Frobenius residual below 1e-10)"]:::p2
+    M3["<b>Z-slot sparsification</b><br/>U3 → virtual Rz where possible"]:::p2
+    M4{"checks pass and<br/>CNOTs not higher?"}:::chk
+    M0 --> M1 --> M2 --> M3 --> M4
+    M4 -->|"accept / discard"| M0
+    SCH["2a · refine each elite until it stalls<br/>2b · deepen the best with ≤ 5-qubit blocks"]:::opt
+  end
+  OUT(["<b>Optimised circuit C′</b><br/>same physical qubits<br/>only coupled pairs<br/>native ECR directions<br/>checked equivalent"]):::io
+  IN --> P1
+  P1 ==>|"up to 3<br/>distinct elites"| P2
+  P2 ==>|"deadline T"| OUT
+
+  classDef io fill:#f0efec,stroke:#898781,stroke-width:1px,color:#0b0b0b;
+  classDef p1 fill:#e6f0fc,stroke:#2a78d6,stroke-width:1px,color:#0b0b0b;
+  classDef p2 fill:#cde2fb,stroke:#1c5cab,stroke-width:1px,color:#0b0b0b;
+  classDef chk fill:#ffffff,stroke:#52514e,stroke-width:1px,color:#0b0b0b;
+  classDef tool fill:#ffffff,stroke:#c3c2b7,stroke-width:1px,color:#0b0b0b;
+  classDef opt fill:#ffffff,stroke:#2a78d6,stroke-width:1px,stroke-dasharray:4 3,color:#52514e;

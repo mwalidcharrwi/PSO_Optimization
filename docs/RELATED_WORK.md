@@ -137,3 +137,55 @@ when the decoded structure changes; and (iv) optimise one stage (synthesis
 | G6 | Decomposition, layout and routing optimised in isolation | **Hardware co-optimisation** of Toffoli networks (incl. nearest-neighbour variants), random-key layout and router hyper-parameters in one swarm |
 | G7 | Fixed placement of merged phases | **Free rotation placement** proven sound through the path-sum argument |
 | G8 | Numerical resynthesis gets stuck in local minima | **Swarm instantiation** (PSO + Levenberg–Marquardt) for block resynthesis |
+| G9 | Superoptimisers (GUOQ, QUESO, Quartz, BQSKit) mostly target logical circuits; for already-mapped circuits their synthesis ignores the device connectivity | **Connectivity-preserving memetic resynthesis** (v2): CNOT deletion inside the block's own skeleton, so no new qubit interaction can appear; swarm elites as diverse starting points (see §7) |
+
+## 7. Head-to-head comparison on the supplied benchmarks
+
+The supplied circuits (`test_circuits_new`) are 127-qubit, IBM-Eagle-mapped
+circuits in {rz, sx, x, ecr}.  None of them appears in the published
+evaluation suites of the tools below.  Those suites contain logical circuits
+(for example GUOQ's 250-circuit suite includes `qft_16` only as a logical
+circuit), so published numbers cannot be compared.  We therefore ran the
+tools ourselves on the exact files, under one contract:
+
+* the output must be equivalent on the same physical qubits;
+* two-qubit gates may only act on pairs already coupled in the input;
+* the output uses native {rz, sx, x, ecr} with native ECR directions.
+
+Driver: `qcpso/bench/compare_ibm.py`; tool wrappers:
+`qcpso/bench/literature.py`.  The supplied circuits were transpiled by
+Qiskit at optimisation level 3, so the input already is the Qiskit O3
+result and Qiskit is not compared as a separate tool.
+
+| Tool | Configuration used |
+|---|---|
+| TKET (pytket 2.x) | Connectivity-preserving fixed point of `SynthesiseTket`, `KAKDecomposition(allow_swaps=False)` and `CliffordSimp(allow_swaps=False)`.  `FullPeepholeOptimise` is not used: its 3-qubit resynthesis can couple uncoupled qubits.  (HyPSO-QCO's own TKET pass leaves out `SynthesiseTket`, which can drop small rotations; the baseline's outputs were all verified numerically exact) |
+| QUESO (PLDI'23) | GUOQ binary with the authors' QUESO flags (`-opt TOTAL -search BEAM -temp 0 -q 8000 -resynth NONE`) + `--preserve-mapping` |
+| GUOQ (ASPLOS'25) | IBM-Eagle gate set, `-opt TWO_Q` (2q count, then total), BQSKit resynthesis, `--preserve-mapping`.  Resynthesis made coupling-aware with a small patch (`third_party/`) |
+| BQSKit O3 | `compile(optimization_level=3)` with a `MachineModel` whose coupling graph is the input's coupled pairs |
+
+CX-based tools receive the input converted exactly to {rz, sx, x, cx}
+(`native.to_cx`).  Their outputs are converted back with the same exact
+native lowering that HyPSO-QCO uses, so ECR counts equal their CX counts.
+Anytime tools get the same wall-clock budget on the same 4-core machine.
+Results and discussion: `results/ibm_literature/REPORT.md`.
+
+**Outcome (15 minutes per circuit, one seed).**
+
+| tool | mean ECR reduction vs input |
+|---|---:|
+| QUESO | 0.1 % |
+| TKET (connectivity-preserving) | 4.1 % |
+| GUOQ | 20.2 % |
+| HyPSO-QCO v2 | **31.3 %** |
+
+* HyPSO-QCO v2 has the fewest ECRs on all 10 circuits and the fewest total
+  gates on 9.  With one resynthesis worker it still has fewer ECRs than
+  GUOQ on 6 of 7.  The gain comes from its memetic resynthesis phase, not
+  from the swarm (ablation in the report).
+* Rule-based optimisers that preserve the mapping barely reduce two-qubit
+  counts on these Qiskit-O3-compiled circuits.  Only resynthesis (GUOQ,
+  HyPSO-QCO v2) does.
+* GUOQ's advantage over rules comes from BQSKit resynthesis.  It slows
+  down markedly on the 90k–360k-gate circuits (≤ 0.4 % ECR reduction on
+  `grover_10` and `hubbard_18` in 15 minutes).
