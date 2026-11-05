@@ -2,7 +2,7 @@
 % Requires \usepackage{booktabs}.
 
 \begin{table*}[t]\centering\scriptsize\setlength{\tabcolsep}{2.3pt}
-\caption{ECR / total native gate count after re-optimisation (15\,min per circuit for the anytime tools, GUOQ also 60\,min; mean\,$\pm$\,sd of the ECR count over three seeds on the seven smaller circuits, one seed on the large ones; fewest ECR gates and fewest total gates in bold). The input is Qiskit~O3's transpilation for a 127-qubit IBM Eagle device; $q$: used qubits. Margin: ECR reduction of HyPSO-QCO relative to the best other result on the circuit at any budget. HyPSO-QCO won on all ten circuits against each tool in ECR gates (one-sided Wilcoxon $p = 0.001$).}
+\caption{ECR / total native gate count after re-optimisation (15\,min per circuit for the anytime tools, GUOQ also 60\,min; mean\,$\pm$\,sd of the ECR count over three seeds on the seven smaller circuits, one seed on the large ones; fewest ECR gates and fewest total gates in bold). The input is Qiskit~O3's transpilation for a 127-qubit IBM Eagle device; $q$: used qubits. Margin: ECR reduction of HyPSO-QCO relative to the best other result on the circuit at any budget. HyPSO-QCO won on all ten circuits against each tool in ECR gates (one-sided Wilcoxon $p = 0.001$) and in total gates against each tool but QUESO ($p = 0.001$; QUESO: 9/0/1, $p = 0.002$).}
 \label{tab:main}
 \begin{tabular}{l r r rrrrrrr r}\toprule
 circuit & $q$ & input (Qiskit O3) & TKET & QUESO & BQSKit del. & GUOQ 15\,min & GUOQ 60\,min & TKET$\to$GUOQ & HyPSO-QCO & margin \\\midrule

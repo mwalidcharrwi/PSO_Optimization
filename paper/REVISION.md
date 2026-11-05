@@ -1,5 +1,12 @@
 # Revision of the DAC paper: replacement text, tables and figures
 
+**The compiled revised paper is [`paper/final/hypso_qco_dac27_revised.pdf`](final/hypso_qco_dac27_revised.pdf)**
+(source: `paper/final/hypso_qco_dac27_revised.tex`; 7 pages, the same layout as the submission: six pages of
+content, references on pages 6–7).  To keep six pages of content, it condenses the text below, moves the
+per-circuit margins of Fig. 3(a) into Table I and the RQ2 text (the figure is dropped), and gives the numbers of
+the old Table II (search strategies) in the RQ5 text.  Figure numbering in the PDF: Fig. 1 mean reduction,
+Fig. 2 overview (unchanged), Fig. 3 anytime plot.
+
 All numbers below come from `results/ibm_revision` (revision runs) and
 `results/ibm_literature` (TKET, QUESO and the original runs), via
 

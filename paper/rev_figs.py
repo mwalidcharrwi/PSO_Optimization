@@ -168,12 +168,12 @@ def fig_mean_reduction(plt, runs, inp):
     tools.sort(key=lambda tl: mean_reduction(runs, inp, tl[0], "ecr")[0])   # smallest at the bottom
     tools = [(t, lab + (f" ({n})" if (n := mean_reduction(runs, inp, t, "ecr")[1]) < len(CIRCUITS) else ""))
              for t, lab in tools]
-    fig, axes = plt.subplots(1, 2, figsize=(COL, 0.30 * len(tools) + 0.5), sharey=True)
+    fig, axes = plt.subplots(1, 2, figsize=(COL, 0.215 * len(tools) + 0.45), sharey=True)
     ys = np.arange(len(tools))
     for ax, (key, title) in zip(axes, (("ecr", "ECR gates"), ("gates", "all gates"))):
         vals = [mean_reduction(runs, inp, t, key)[0] for t, _ in tools]
         cols = [BLUE if t == "hypso_rs" else (ORANGE if t.startswith("guoq") else GRAY) for t, _ in tools]
-        ax.barh(ys, vals, 0.68, color=cols, edgecolor="white", linewidth=0.5)
+        ax.barh(ys, vals, 0.72, color=cols, edgecolor="white", linewidth=0.5)
         for y, v in zip(ys, vals):
             ax.text(max(v, 0) + 1, y, f"{v:.1f}", va="center", fontsize=7.5, color=INK2)
         ax.set_title(title, loc="left", fontsize=8)
@@ -181,8 +181,8 @@ def fig_mean_reduction(plt, runs, inp):
         ax.grid(axis="y", visible=False)
         ax.axvline(0, color=AXIS, lw=0.6)
     axes[0].set_yticks(ys, [lab for _, lab in tools])
-    fig.tight_layout(w_pad=0.6, rect=(0, 0.07, 1, 1))
-    fig.supxlabel("mean reduction beyond Qiskit O3 over the ten circuits (%)", fontsize=8, y=0.01)
+    fig.tight_layout(w_pad=0.6, rect=(0, 0.08, 1, 1))
+    fig.supxlabel("mean reduction beyond Qiskit O3 over the ten circuits (%)", fontsize=8, y=0.005)
     save(plt, fig, "rev_fig1_mean_reduction")
 
 
@@ -252,7 +252,7 @@ def fig_anytime(plt, runs, inp):
     """Mean remaining ECR fraction over the seven smaller circuits versus wall-clock time."""
     data = anytime_data(runs, inp)
     grid = np.concatenate([[0], np.geomspace(0.05, 60, 400)])
-    fig, ax = plt.subplots(figsize=(COL, 2.05))
+    fig, ax = plt.subplots(figsize=(COL, 1.75))
 
     def curve(key, tmax):
         vals = []
@@ -267,11 +267,11 @@ def fig_anytime(plt, runs, inp):
         return v
 
     tket = 100 * np.mean([data[c]["tket"] / inp[c]["ecr"] for c in SMALL])
-    ax.axhline(tket, color=AQUA, lw=1.0, ls=(0, (4, 2)), label="TKET (seconds)")
+    ax.axhline(tket, color=AQUA, lw=1.0, ls=(0, (4, 2)), label="TKET")
     for key, lab, col, tmax, ls, lw in (
-            ("queso", "QUESO", YELLOW, 15, "-", 1.2), ("bqskit", "BQSKit deletion", PINK, 15, "-", 1.2),
-            ("guoq", "GUOQ (3 seeds)", ORANGE, 15, "-", 1.2), ("guoq0", "GUOQ 60-min run", ORANGE, 60, (0, (1.2, 1.2)), 0.9),
-            ("hypso", "HyPSO-QCO (3 seeds)", BLUE, 15, "-", 1.6)):
+            ("queso", "QUESO", YELLOW, 15, "-", 1.2), ("bqskit", "BQSKit del.", PINK, 15, "-", 1.2),
+            ("guoq", "GUOQ", ORANGE, 15, "-", 1.2), ("guoq0", "GUOQ, 60 min", ORANGE, 60, (0, (1.2, 1.2)), 0.9),
+            ("hypso", "HyPSO-QCO", BLUE, 15, "-", 1.6)):
         v = curve(key, tmax)
         if v is not None:
             ax.plot(grid, v, color=col, lw=lw, ls=ls, label=lab)
@@ -283,7 +283,9 @@ def fig_anytime(plt, runs, inp):
     ax.minorticks_off()
     ax.set_xlabel("wall-clock time (min)")
     ax.set_ylabel("ECR gates left (% of input)")
-    ax.legend(loc="lower left", bbox_to_anchor=(0, 1.0), ncol=2, handlelength=1.6, columnspacing=1.0)
+    ax.set_ylim(58, 101.5)
+    ax.legend(loc="lower left", bbox_to_anchor=(-0.02, 0.99), ncol=3, handlelength=1.5, columnspacing=0.9,
+              labelspacing=0.25, borderaxespad=0.1)
     save(plt, fig, "rev_fig_anytime")
     return data
 

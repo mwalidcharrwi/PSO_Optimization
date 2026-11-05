@@ -139,7 +139,8 @@ def latex_table1(runs, inp, bq):
              "circuits, one seed on the large ones; fewest ECR gates and fewest total gates in bold). The input is "
              "Qiskit~O3's transpilation for a 127-qubit IBM Eagle device; $q$: used qubits. Margin: ECR reduction of "
              "HyPSO-QCO relative to the best other result on the circuit at any budget. HyPSO-QCO won on all ten "
-             "circuits against each tool in ECR gates (one-sided Wilcoxon $p = 0.001$).}",
+             "circuits against each tool in ECR gates (one-sided Wilcoxon $p = 0.001$) and in total gates against "
+             "each tool but QUESO ($p = 0.001$; QUESO: 9/0/1, $p = 0.002$).}",
              "\\label{tab:main}",
              "\\begin{tabular}{l r r " + "r" * len(cols) + " r}\\toprule",
              "circuit & $q$ & input (Qiskit O3) & " + " & ".join(lab for _, lab in cols) + " & margin \\\\\\midrule"]
