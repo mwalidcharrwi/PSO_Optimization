@@ -127,7 +127,7 @@ def latex_table1(runs, inp, bq):
     """Table I of the revised paper (table*): ECR / total gates per tool, mean +- sd of the ECR count
     where a tool ran several seeds; fewest ECR and fewest total gates in bold; margin = ECR reduction of
     HyPSO-QCO relative to the best other result on the circuit at any budget."""
-    cols = [("tket", "TKET"), ("queso", "QUESO"), (bq, "BQSKit del."), ("ibm_ai", "IBM AI"),
+    cols = [("tket", "TKET"), ("queso", "QUESO"), (bq, "BQSKit del."),   # IBM AI: in the text (width)
             ("guoq15", "GUOQ 15\\,min"), ("guoq60", "GUOQ 60\\,min"), ("tket_guoq", "TKET$\\to$GUOQ"),
             ("hypso_rs", "HyPSO-QCO")]
     cols = [(t, lab) for t, lab in cols if runs.get(t)]
