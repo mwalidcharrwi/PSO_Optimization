@@ -36,7 +36,7 @@ Placeholders of the form ⟨…⟩ are filled in after the last runs.
 > 0.1% for QUESO (one-sided Wilcoxon p = 0.001 against each). Its worst
 > seed beat GUOQ's best run on each of the seven smaller circuits, it passed
 > GUOQ's 60-minute result after a median of 1.2 minutes, and every checked
-> output was numerically exact (deviation at most ⟨D⟩).
+> output was numerically exact (deviation at most 4.8 × 10⁻⁸).
 
 ## 2. Introduction
 
@@ -287,16 +287,19 @@ ablated in isolation; the indirect evidence is …".)
 
 ### F. RQ6: Correctness (replace the first paragraph)
 
-> Every checked HyPSO-QCO output was numerically exact: over the
-> ⟨31⟩ revision outputs, the largest deviation was ⟨D⟩ (⟨circuit⟩), and
-> heisenberg_32, checked with the MPS miter, deviated by ⟨⟩. TKET and
-> QUESO were numerically exact too, and so was BQSKit with its tightened
-> threshold (⟨⟩). GUOQ's outputs were approximate on ⟨heisenberg_8, hhl_8
-> and, after TKET, grover_10⟩ (up to ⟨⟩); we kept them, which can only
-> favour GUOQ. Behind each HyPSO-QCO output lie N = ⟨39–1,209⟩ accepted
-> block replacements, whose re-simulated errors sum to at most 2.2 × 10⁻⁸,
-> so Proposition 1(c) bounds the deviation of the unchecked hubbard_18
-> output by ⟨1.3 × 10⁻⁸ + TKET blocks⟩.
+> Every checked HyPSO-QCO output was numerically exact: the 23 checked
+> resynthesis-only outputs deviated by at most 4.8 × 10⁻⁸ (hubbard_8), the
+> seven ablation outputs by at most 7.8 × 10⁻⁸, and heisenberg_32, checked
+> with the MPS miter, by 2.7 × 10⁻¹⁰. TKET and QUESO were numerically exact
+> too, and so were BQSKit with its tightened threshold (at most
+> 2.5 × 10⁻⁷) and IBM's AI passes (⟨AI max⟩). GUOQ's outputs were
+> approximate on heisenberg_8 (two of three seeds), hhl_8 (one seed) and,
+> after TKET, grover_10, with deviations up to 1.2 × 10⁻⁵; we kept them,
+> which can only favour GUOQ. Behind each HyPSO-QCO output lie N = 39 to
+> 1,209 accepted block replacements, whose re-simulated errors sum to at
+> most 2.2 × 10⁻⁸. On hubbard_18, where no tool's output could be checked
+> end to end, Proposition 1(c) bounds HyPSO-QCO's deviation by 1.3 × 10⁻⁸
+> (831 fitted blocks, 1.32 × 10⁻⁸; 465 TKET blocks, 9.2 × 10⁻¹¹).
 
 Second paragraph (hubbard_18 not checked end to end, development defects):
 keep.
