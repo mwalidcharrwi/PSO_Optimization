@@ -1,0 +1,2 @@
+[bqskit-del      0s] chunk 500 gates
+[bqskit-del    900s] sweep 1: cx 2269 -> 2150, gates 4774 -> 4550 [block 3] (deadline)

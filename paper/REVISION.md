@@ -6,8 +6,6 @@ All numbers below come from `results/ibm_revision` (revision runs) and
     python -m qcpso.bench.report_revision > results/ibm_revision/REPORT_TABLES.md
     PYTHONPATH=. python paper/rev_figs.py
 
-Placeholders of the form ⟨…⟩ are filled in after the last runs.
-
 ## 0. What changed, item by item
 
 | reviewer item | done | where |
@@ -19,7 +17,7 @@ Placeholders of the form ⟨…⟩ are filled in after the last runs.
 | resynthesis-only pre-specified; post-hoc caveat removed | yes | V (Protocol), VI-D |
 | TKET → GUOQ on the three large circuits | yes | Table I, VI-B |
 | Z-slot sparsification off, once per small circuit | yes | VI-D |
-| IBM AI synthesis passes | ⟨run / sentence⟩ | V (Tools), VI-A |
+| IBM AI synthesis passes | run on eight circuits (out of memory on grover_10; hubbard_18 not run) | V (Tools), VI-A, Fig. 1 |
 | N for Proposition 1(c) | yes | IV-D, VI-F |
 | larger figure fonts | yes (all figures drawn at printed size, 8 pt) | `paper/figures_rev/` |
 | anytime plot instead of part of the RQ3 text | yes | VI-C, Fig. 4 |
@@ -62,9 +60,10 @@ drawn at printed size). Caption:
 
 > Fig. 1. Mean reduction beyond Qiskit O3 over the ten IBM Eagle benchmarks
 > (15 min per circuit for the anytime tools; GUOQ also with 60 min;
-> HyPSO-QCO and GUOQ: mean of three seeds on the seven smaller circuits).
-> HyPSO-QCO used the fewest ECR gates on all ten circuits (one-sided
-> Wilcoxon p = 0.001 against each tool).
+> HyPSO-QCO and GUOQ: mean of three seeds on the seven smaller circuits;
+> IBM AI synthesis: the eight circuits it finished). HyPSO-QCO used the
+> fewest ECR gates on all ten circuits (one-sided Wilcoxon p = 0.001 against
+> each tool that ran on all ten).
 
 ## 3. Section II-B, Related Work (one sentence added at the end of "Numerical resynthesis")
 
@@ -103,18 +102,17 @@ mult_8 in 35 minutes;" **by**
 > BQSKit. On hhl_8, its first 3,000-gate chunk did not finish one sweep in
 > 15 minutes, so it ran with 500-gate chunks. Deleting gates cannot couple
 > new pairs, so its outputs satisfy the contract.
-> ⟨IBM AI sentence⟩ BQSKit's level-3 flow did not finish mult_8 in
-> 35 minutes; PyZX and VOQC do not preserve connectivity, and Quarl needs a
-> trained GPU model.
-
-**IBM AI sentence (if the run gives usable numbers):**
-
-> IBM's AI synthesis passes [21], [22] (qiskit-ibm-transpiler 0.18, local
-> models) re-synthesised Clifford, linear-function and permutation blocks
-> after IBM's collection passes, with a coupling map restricted to the
-> input's coupled pairs; its Pauli-network synthesis is excluded, because
-> its local output was not equivalent to its input (mult_8: 67 CNOTs
-> instead of 311).
+> IBM's AI synthesis passes [21], [22] (qiskit-ibm-transpiler 0.18 with its
+> local models) re-synthesised Clifford, linear-function and permutation
+> blocks after IBM's collection passes, in two rounds over both collection
+> directions, with a coupling map restricted to the input's coupled pairs.
+> Their Pauli-network synthesis is excluded, because its local output was
+> not equivalent to its input (mult_8: 67 CNOTs instead of 311). The passes
+> have no time limit; they took 25 s to 31 min on eight circuits, exhausted
+> the container's 15 GB of memory on grover_10 (93,235 gates) after
+> 58 minutes, and were not run on hubbard_18.
+> BQSKit's level-3 flow did not finish mult_8 in 35 minutes; PyZX and VOQC
+> do not preserve connectivity, and Quarl needs a trained GPU model.
 
 **TKET → GUOQ, add after the GUOQ sentence:**
 
@@ -185,7 +183,7 @@ Caption:
 > seeds on the seven smaller circuits), against 20.8% for GUOQ (three
 > seeds), 8.9% for BQSKit's deletion-only workflow, 4.1% for TKET and 0.1%
 > for QUESO (geometric-mean ECR ratio 0.601, against 0.736 for GUOQ), and
-> won on all ten circuits against each tool (p = 0.001). The seed-to-seed
+> won on all ten circuits against each of them (p = 0.001). The seed-to-seed
 > standard deviation was at most 4.5% of the mean (hubbard_8), and on each
 > of the seven smaller circuits even HyPSO-QCO's worst seed used fewer ECR
 > gates than GUOQ's best run of any length (closest: qft_16, 521 against
@@ -217,6 +215,14 @@ BQSKit paragraph (new, after the large-circuit paragraph):
 > not finish in 15 minutes. Deletion alone thus leaves much of the redundancy that
 > HyPSO-QCO's exact start, warm-started fits and Z-slot sparsification
 > remove.
+
+IBM AI paragraph (new, after the BQSKit paragraph):
+
+> IBM's AI synthesis passes removed 1.9% of the ECR gates on the eight
+> circuits they finished (at most 9.2%, on hubbard_8), and HyPSO-QCO won on
+> all eight (p = 0.004). After Qiskit O3, few Clifford, linear-function or
+> permutation blocks remain that their models improve, and local models
+> exist only for some subgraphs of the coupling map.
 
 Success-probability sentence (replace):
 
@@ -292,7 +298,7 @@ ablated in isolation; the indirect evidence is …".)
 > seven ablation outputs by at most 7.8 × 10⁻⁸, and heisenberg_32, checked
 > with the MPS miter, by 2.7 × 10⁻¹⁰. TKET and QUESO were numerically exact
 > too, and so were BQSKit with its tightened threshold (at most
-> 2.5 × 10⁻⁷) and IBM's AI passes (⟨AI max⟩). GUOQ's outputs were
+> 2.5 × 10⁻⁷) and IBM's AI passes (at most 2.3 × 10⁻⁹). GUOQ's outputs were
 > approximate on heisenberg_8 (two of three seeds), hhl_8 (one seed) and,
 > after TKET, grover_10, with deviations up to 1.2 × 10⁻⁵; we kept them,
 > which can only favour GUOQ. Behind each HyPSO-QCO output lie N = 39 to
