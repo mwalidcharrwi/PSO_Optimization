@@ -12,7 +12,7 @@ Placeholders of the form ⟨…⟩ are filled in after the last runs.
 
 | reviewer item | done | where |
 |---|---|---|
-| BQSKit deletion baseline, same budget and cores, all ten circuits | ⟨yes⟩ | V (Tools), Table I, VI-A |
+| BQSKit deletion baseline, same budget and cores, all ten circuits | yes | V (Tools), Table I, VI-A |
 | GUOQ 60 min on all ten circuits | yes | Table I, VI-B, Fig. 4 |
 | three seeds for both tools on the seven smaller circuits, mean ± sd | yes | Table I, VI-A, VII |
 | two GUOQ runs in parallel | yes (two jobs, ≈ 2 cores each) | V (Protocol) |
@@ -32,7 +32,7 @@ Placeholders of the form ⟨…⟩ are filled in after the last runs.
 > two-qubit (ECR) gates of all evaluated tools on every circuit within
 > 15 minutes. Over three seeds, it removed 33.4% of the ECR gates on
 > average, against 21.5% for GUOQ with a four times longer budget of
-> 60 minutes, ⟨B⟩% for BQSKit's deletion-only workflow, 4.1% for TKET and
+> 60 minutes, 8.9% for BQSKit's deletion-only workflow, 4.1% for TKET and
 > 0.1% for QUESO (one-sided Wilcoxon p = 0.001 against each). Its worst
 > seed beat GUOQ's best run on each of the seven smaller circuits, it passed
 > GUOQ's 60-minute result after a median of 1.2 minutes, and every checked
@@ -44,7 +44,8 @@ Placeholders of the form ⟨…⟩ are filled in after the last runs.
 
 > Second, it must scale: GUOQ reduced the ECR count of our two largest
 > benchmarks (93,235 and 357,535 gates) by at most 0.4% in 15 minutes and
-> 0.7% in 60 minutes, and BQSKit's deletion-only workflow ⟨removed …⟩.
+> 0.7% in 60 minutes, and BQSKit's deletion-only workflow deleted at most
+> 0.9% of their remaining CNOT gates.
 
 **Replace** the third contribution by
 
@@ -74,10 +75,11 @@ drawn at printed size). Caption:
 
 **Add**
 
-> In our runs, N ranged from ⟨Nmin⟩ (⟨circuit⟩) to 1,209 (grover_10); the
+> In our runs, N ranged from 39 (add_17) to 1,209 (grover_10), and the
 > re-simulated block errors sum to at most 2.2 × 10⁻⁸ for every output.
-> In large mode, the seed's ⟨111 and 465⟩ TKET blocks (heisenberg_32,
-> hubbard_18) add ⟨Σ⟩ (computed exactly from the saved blocks).
+> In large mode, the seed's 111 and 465 TKET blocks (heisenberg_32,
+> hubbard_18) add 3.5 × 10⁻¹¹ and 9.2 × 10⁻¹¹ (computed exactly from the
+> saved blocks).
 
 ## 5. Section V, Experimental Setup
 
@@ -92,9 +94,15 @@ mult_8 in 35 minutes;" **by**
 > block's Hilbert–Schmidt cost, which grows with the square of the operator
 > error: at the default 10⁻⁸, its output for heisenberg_8 deviated by
 > 1.4 × 10⁻⁴ (402 ECR gates). We therefore used 10⁻¹⁵, the tightest value
-> above rounding (⟨heisenberg_8 result⟩), and instantiation level 1, which
-> beat level 2 in a pilot on mult_8 (221 against 246 ECR gates). Deleting
-> gates cannot couple new pairs, so its outputs satisfy the contract.
+> above rounding (399 ECR gates, deviation 3.5 × 10⁻⁸), and instantiation
+> level 1, which beat level 2 in a pilot on mult_8 (221 against 246 ECR
+> gates). BQSKit needs fused single-qubit gates to re-instantiate, so it
+> received the circuit after HyPSO-QCO's exact final stage (optimal
+> two-qubit resynthesis, cancellation and U3 fusion), which alone removes
+> 0–12% of the CNOTs (hubbard_18: 33,958 to 29,903) and can only favour
+> BQSKit. On hhl_8, its first 3,000-gate chunk did not finish one sweep in
+> 15 minutes, so it ran with 500-gate chunks. Deleting gates cannot couple
+> new pairs, so its outputs satisfy the contract.
 > ⟨IBM AI sentence⟩ BQSKit's level-3 flow did not finish mult_8 in
 > 35 minutes; PyZX and VOQC do not preserve connectivity, and Quarl needs a
 > trained GPU model.
@@ -175,7 +183,7 @@ Caption:
 > HyPSO-QCO used the fewest ECR gates on all ten circuits (Table I).
 > Beyond Qiskit O3, it removed 33.4% of the ECR gates on average (three
 > seeds on the seven smaller circuits), against 20.8% for GUOQ (three
-> seeds), ⟨B⟩% for BQSKit's deletion-only workflow, 4.1% for TKET and 0.1%
+> seeds), 8.9% for BQSKit's deletion-only workflow, 4.1% for TKET and 0.1%
 > for QUESO (geometric-mean ECR ratio 0.601, against 0.736 for GUOQ), and
 > won on all ten circuits against each tool (p = 0.001). The seed-to-seed
 > standard deviation was at most 4.5% of the mean (hubbard_8), and on each
@@ -183,8 +191,8 @@ Caption:
 > gates than GUOQ's best run of any length (closest: qft_16, 521 against
 > 529). Its margin over the best other tool at 15 minutes ranged from 3.3%
 > (qae_17) to 38.7% (hhl_8), 15.2% on average, and over the ten circuits it
-> removed 14,807 ECR gates, against 6,592 for TKET, 2,860 for GUOQ, ⟨⟩ for
-> BQSKit and 40 for QUESO.
+> removed 14,807 ECR gates, against 6,592 for TKET, 5,478 for BQSKit, 2,860
+> for GUOQ and 40 for QUESO.
 
 Second paragraph ("It also led in total gates …"): keep, with the numbers
 of Table I (HyPSO-QCO: 56.0% total gates, 52.5% physical single-qubit gates;
@@ -197,10 +205,26 @@ Third paragraph (large circuits): replace the numbers:
 > HyPSO-QCO used 7.9–15.8% fewer ECR gates than TKET and 7.8–15.8% fewer
 > than TKET followed by GUOQ on the three largest circuits.
 
-BQSKit paragraph (new): ⟨one or two sentences after the runs: where BQSKit
-deletion lands relative to GUOQ and HyPSO-QCO, and how far its blocks grew⟩.
+BQSKit paragraph (new, after the large-circuit paragraph):
 
-Success-probability sentence: ⟨recomputed with the new means⟩.
+> BQSKit's deletion-only workflow, the closest baseline to our memetic
+> phase, removed 8.9% of the ECR gates on average; HyPSO-QCO used 27.1%
+> fewer on average and won on all ten circuits (p = 0.001). With blocks of
+> up to five qubits, it deleted 4.4–27.1% of the CNOTs that remained after
+> its exact preprocessing on the six smaller circuits it could sweep
+> repeatedly and 1.3% on heisenberg_32, but fewer than 1% on grover_10 and
+> hubbard_18 and 5.2% on hhl_8, where one sweep with three-qubit blocks did
+> not finish in 15 minutes. Deletion alone thus leaves much of the redundancy that
+> HyPSO-QCO's exact start, warm-started fits and Z-slot sparsification
+> remove.
+
+Success-probability sentence (replace):
+
+> Its outputs had the highest estimated success probability (Eq. (2)) on
+> every circuit: from 0.0959 to 0.313 on mult_8 (GUOQ: 0.220 in 15 and
+> 0.235 in 60 minutes), from 4.08 × 10⁻⁵ to 1.87 × 10⁻³ on hubbard_8
+> (GUOQ: 2.38 × 10⁻⁴ in 60 minutes) and from 1.09 × 10⁻⁸ to 0.111 on
+> hhl_8 (GUOQ: 0.0291 in 60 minutes).
 
 ### B. RQ2: Longer Budgets, Combined Baselines and Matched Compute (replace)
 
@@ -229,7 +253,9 @@ allows; otherwise drop it and keep the RQ4 numbers in the text.)
 > removed most of its reduction in the first minutes and passed GUOQ's
 > final 60-minute result after 0.4–4.0 minutes (median 1.2 over the 21
 > runs), while GUOQ improved slowly and had nearly converged after
-> 15 minutes (20.8% at 15 and 21.5% at 60 minutes). ⟨BQSKit sentence⟩.
+> 15 minutes (20.8% at 15 and 21.5% at 60 minutes). BQSKit's deletion
+> stalled after its first sweeps on most circuits, and growing its blocks
+> to four and five qubits gained a few more percent.
 
 Fig. 4: `paper/figures_rev/rev_fig_anytime.pdf` (column width). Caption:
 

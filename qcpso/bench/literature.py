@@ -226,8 +226,12 @@ def run_bqskit_deletion(circ: Circuit, time_limit: float = 900.0, workers: int =
     block, unfold) under a wall-clock budget.
 
     Deleting gates can never couple a new qubit pair, so the output respects the
-    mapping by construction.  Single-qubit runs are first fused into U3 gates, so
-    that every remaining gate can be re-instantiated.  BQSKit has no time limit,
+    mapping by construction.  The input is first brought to {U3, CX} by
+    HyPSO-QCO's exact final stage (``finish(..., "continuous")``: optimal two-qubit
+    block resynthesis, cancellation and single-qubit fusion), so that every
+    remaining gate can be re-instantiated; this stage alone removes 0-12 % of the
+    CNOTs (hubbard_18: 33,958 -> 29,903), which can only favour BQSKit.  The log's
+    first sweep line starts from that count.  BQSKit has no time limit,
     so the circuit is processed in chunks of ``chunk`` gates on one compiler with
     ``workers`` workers; sweeps over all chunks repeat (with shifted chunk
     boundaries) while time is left.  When a sweep no longer lowers the gate count,
