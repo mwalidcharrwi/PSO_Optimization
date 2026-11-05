@@ -987,3 +987,43 @@ python paper/build_package.py                           # tables, figures, data 
 **Software versions:** Python 3.11, Qiskit 2.5.2, Qiskit Aer 0.17.2,
 pytket 2.18.4, BQSKit 1.2.1, GUOQ/QUESO commit 8c4c3a5, NumPy 2.4.6,
 SciPy 1.17.1, quimb 1.15.0.
+
+---
+
+## 13. Revision (November 2026): what supersedes the numbers above
+
+The revision runs in `results/ibm_revision` replace the headline comparison
+of §6 for mapped circuits.  Replacement text for every affected section of
+the paper, Table I (`paper/tables_rev.tex`) and the revised figures
+(`paper/figures_rev/`) are in **`paper/REVISION.md`**; all numbers come from
+`results/ibm_revision/REPORT_TABLES.md`.
+
+* **Configuration.**  Resynthesis only (whole budget to the memetic phase),
+  fixed before the revision runs; it is the headline for mapped circuits, so
+  the post-hoc caveat of §6 no longer applies.
+* **Seeds and budgets.**  HyPSO-QCO and GUOQ: three seeds on the seven
+  smaller circuits, one on the three large ones.  GUOQ also 60 minutes on all
+  ten circuits; TKET→GUOQ on the three large ones.
+* **New baselines.**  BQSKit's deletion-only workflow (15 min, 4 workers,
+  threshold 1e-15, blocks grown 3→4→5) and IBM's AI synthesis passes
+  (Clifford, linear-function and permutation synthesis, local models).
+* **Headline.**  HyPSO-QCO: 33.4 % mean ECR reduction (56.0 % total gates);
+  GUOQ 20.8 % (15 min) and 21.5 % (60 min); BQSKit deletion 8.9 %; TKET
+  4.1 %; QUESO 0.1 %.  Fewest ECR gates on all ten circuits against every
+  tool (p = 0.001); worst HyPSO-QCO seed below GUOQ's best run on each
+  smaller circuit; GUOQ's 60-minute result passed after a median 1.2 min.
+* **Correctness.**  HyPSO-QCO outputs deviate by at most 4.8e-8;
+  Proposition 1(c) with N = 39–1,209 bounds hubbard_18 by 1.3e-8.  Some GUOQ
+  outputs are approximate (up to 1.2e-5) and were kept.
+
+Reproduce the revision:
+
+```bash
+scripts/run_revision_all.sh            # GUOQ (phase A), HyPSO-QCO and BQSKit (B, C), IBM AI synthesis
+scripts/run_revision_followup.sh       # BQSKit on hhl_8 with 500-gate chunks
+python -m qcpso.bench.verify_literature results/ibm_revision --large --exclude hubbard_18
+python -m qcpso.bench.tket_block_bounds results/ibm_revision/hypso_rs
+python -m qcpso.bench.report_revision > results/ibm_revision/REPORT_TABLES.md
+python -m qcpso.bench.report_revision --latex paper/tables_rev.tex
+PYTHONPATH=. python paper/rev_figs.py
+```
