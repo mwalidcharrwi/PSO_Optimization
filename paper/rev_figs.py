@@ -163,9 +163,12 @@ def fig_mean_reduction(plt, runs, inp):
     """Mean reduction beyond Qiskit O3 (ECR and total gates), one bar per tool."""
     bq = bq_tool(runs)
     tools = [("queso", "QUESO"), ("tket", "TKET"), (bq, "BQSKit deletion"), ("ibm_ai", "IBM AI synthesis"),
-             ("guoq15", "GUOQ"), ("guoq60", "GUOQ, 60 min"), ("hypso_rs", "HyPSO-QCO")]
+             ("guoq15", "GUOQ, 15 min"), ("guoq60", "GUOQ, 60 min"), ("hypso_rs", "HyPSO-QCO")]
     tools = [(t, lab) for t, lab in tools if runs.get(t)]
-    fig, axes = plt.subplots(1, 2, figsize=(COL, 0.32 * len(tools) + 0.55), sharey=True)
+    tools.sort(key=lambda tl: mean_reduction(runs, inp, tl[0], "ecr")[0])   # smallest at the bottom
+    tools = [(t, lab + (f" ({n})" if (n := mean_reduction(runs, inp, t, "ecr")[1]) < len(CIRCUITS) else ""))
+             for t, lab in tools]
+    fig, axes = plt.subplots(1, 2, figsize=(COL, 0.30 * len(tools) + 0.5), sharey=True)
     ys = np.arange(len(tools))
     for ax, (key, title) in zip(axes, (("ecr", "ECR gates"), ("gates", "all gates"))):
         vals = [mean_reduction(runs, inp, t, key)[0] for t, _ in tools]
@@ -178,8 +181,8 @@ def fig_mean_reduction(plt, runs, inp):
         ax.grid(axis="y", visible=False)
         ax.axvline(0, color=AXIS, lw=0.6)
     axes[0].set_yticks(ys, [lab for _, lab in tools])
-    fig.supxlabel("mean reduction beyond Qiskit O3 over the ten circuits (%)", fontsize=8, y=0.0)
-    fig.tight_layout(w_pad=0.6)
+    fig.tight_layout(w_pad=0.6, rect=(0, 0.07, 1, 1))
+    fig.supxlabel("mean reduction beyond Qiskit O3 over the ten circuits (%)", fontsize=8, y=0.01)
     save(plt, fig, "rev_fig1_mean_reduction")
 
 
@@ -197,14 +200,23 @@ def fig_vs_guoq(plt, runs, inp):
         m15.append(np.mean(rel) if rel else np.nan)
         s15.append(np.std(rel, ddof=1) if len(rel) > 1 else 0)
         m60.append(100 * (1 - np.mean(h) / g60[0]) if (h and g60) else np.nan)
-    ax.bar(x - w / 2, m15, w, yerr=s15, color=BLUE, edgecolor="white", linewidth=0.5, label="vs GUOQ, 15 min",
-           error_kw=dict(lw=0.7, capsize=1.5, ecolor=INK2))
+    ax.bar(x - w / 2, m15, w, color=BLUE, edgecolor="white", linewidth=0.5, label="vs GUOQ, 15 min")
+    idx = [i for i, sd in enumerate(s15) if sd > 0]   # error bars only where HyPSO-QCO ran several seeds
+    ax.errorbar(x[idx] - w / 2, np.asarray(m15)[idx], yerr=np.asarray(s15)[idx], fmt="none", lw=0.7, capsize=1.5,
+                ecolor=INK2)
     ax.bar(x + w / 2, m60, w, color=BLUE_L, edgecolor="white", linewidth=0.5, label="vs GUOQ, 60 min")
+    tg = []
+    for i, c in enumerate(CIRCUITS):   # the stronger combined baseline on the large circuits
+        h, t = [r["ecr"] for r in runs["hypso_rs"].get(c, [])], stat(runs, "tket_guoq", c)
+        if h and t:
+            tg.append((i, 100 * (1 - np.mean(h) / t[0])))
+    if tg:
+        ax.scatter([i for i, _ in tg], [v for _, v in tg], marker="D", s=9, color=INK, zorder=3, label="vs TKET→GUOQ")
     ax.axhline(0, color=AXIS, lw=0.6)
-    ax.set_xticks(x, [c.replace("_", r"\_") if False else c for c in CIRCUITS], rotation=35, ha="right")
+    ax.set_xticks(x, CIRCUITS, rotation=35, ha="right")
     ax.set_ylabel("fewer ECR gates (%)")
     ax.grid(axis="x", visible=False)
-    ax.legend(loc="upper right", ncol=1, handlelength=1.0)
+    ax.legend(loc="upper left", ncol=1, handlelength=1.0)
     save(plt, fig, "rev_fig3a_vs_guoq")
 
 
