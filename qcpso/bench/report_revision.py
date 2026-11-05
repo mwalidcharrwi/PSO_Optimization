@@ -266,6 +266,21 @@ def main(argv=None):
             removed = sum(inp[c]["ecr"] - stat(runs, t, c)[0] for c in cs)
             out.append(f"| {lab} | {len(cs)} | {100 * (1 - np.mean(ratios)):.1f} % | "
                        f"{math.exp(np.mean(np.log(ratios))):.3f} | {removed:,.0f} |")
+        # estimated success probability, Eq. (2) of the paper: (1 - 7e-3)^n_ecr (1 - 2.5e-4)^n_1q
+        def psucc(e, q):
+            return (1 - 7e-3) ** e * (1 - 2.5e-4) ** q
+        out += ["", "## Estimated success probability (Eq. 2; means over seeds)", "",
+                "| circuit | input | " + " | ".join(lab for _, lab in tools) + " | best |",
+                "|---|---:|" + "---:|" * len(tools) + "---|"]
+        for c in CIRCUITS:
+            vals = {}
+            for t, lab in tools:
+                e, q = stat(runs, t, c, "ecr"), stat(runs, t, c, "oneq_phys")
+                if e and q:
+                    vals[lab] = psucc(e[0], q[0])
+            best = max(vals, key=vals.get) if vals else "–"
+            out.append(f"| {c} | {psucc(inp[c]['ecr'], inp[c]['oneq_phys']):.3g} | " +
+                       " | ".join(f"{vals[lab]:.3g}" if lab in vals else "–" for _, lab in tools) + f" | {best} |")
         hs = [stat(runs, "hypso_rs", c) for c in SMALL if stat(runs, "hypso_rs", c)]
         if hs:
             out.append("")
