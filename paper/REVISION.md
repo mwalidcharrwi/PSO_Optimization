@@ -92,8 +92,8 @@ mult_8 in 35 minutes;" **by**
 > and, at a fixed point, grows the blocks from three to four and five
 > qubits, so the whole budget is used. Its acceptance threshold bounds a
 > block's Hilbert–Schmidt cost, which grows with the square of the operator
-> error: at the default 10⁻⁸, its output for heisenberg_8 deviated by
-> 1.4 × 10⁻⁴ (402 ECR gates). We therefore used 10⁻¹⁵, the tightest value
+> error: at the default 10⁻⁸, its output for heisenberg_8 was 1.4 × 10⁻⁴
+> from its input in spectral norm (402 ECR gates). We therefore used 10⁻¹⁵, the tightest value
 > above rounding (399 ECR gates, deviation 3.5 × 10⁻⁸), and instantiation
 > level 1, which beat level 2 in a pilot on mult_8 (221 against 246 ECR
 > gates). BQSKit needs fused single-qubit gates to re-instantiate, so it
@@ -261,7 +261,7 @@ Fig. 4: `paper/figures_rev/rev_fig_anytime.pdf` (column width). Caption:
 
 > Fig. 4. ECR gates left over wall-clock time, mean over the seven smaller
 > circuits (HyPSO-QCO and GUOQ: mean of three seeds; dotted: GUOQ's
-> 60-minute run). TKET runs in seconds.
+> 60-minute run; BQSKit deletion: one run). TKET runs in seconds.
 
 (`rev_fig_anytime_per_circuit.pdf`, full width, is available for the
 artifact appendix.)
@@ -312,7 +312,9 @@ keep.
 > jobs at a time while HyPSO-QCO and BQSKit ran alone, and the 1-worker run
 > addresses the compute difference. BQSKit used a tighter acceptance
 > threshold than its default, without which its outputs are not equivalent
-> to their inputs. All benchmarks come from one device family and one
+> to their inputs, and it received HyPSO-QCO's exact preprocessing and, on
+> hhl_8, smaller chunks, which can only favour it; GUOQ's approximate
+> outputs were kept, which can only favour GUOQ. All benchmarks come from one device family and one
 > transpiler, success probabilities are model estimates, and equivalence is
 > established numerically, not symbolically.
 
